@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/authapi.test.ts","./src/api/authapi.ts","./src/auth/authcontext.test.tsx","./src/auth/authcontext.tsx","./src/components/registrationform.test.tsx","./src/components/registrationform.tsx","./src/pages/register.test.tsx","./src/pages/register.tsx","./src/test/setup.ts"],"version":"5.9.3"}
