@@ -25,7 +25,19 @@ npm run format       # run Prettier
 npm run format:check
 ```
 
-There are no test scripts defined yet in this repository.
+```bash
+npm test             # run tests in all workspaces (client: vitest; server: vitest + supertest)
+```
+
+## Development Approach
+
+**Test-Driven Development (TDD) is mandatory** for all new features, bug fixes, and refactoring. See `.agents/skills/test-driven-development/` for complete TDD guidelines.
+
+All production code must be implemented after a failing test is written and verified. No exceptions without explicit approval.
+
+## UI feedback with Playwright MCP
+
+The Playwright MCP server is configured in `.mcp.json` for visual/UI verification (screenshots, page snapshots, console checks) against the running dev servers. It writes all output (screenshots, traces) to the `.playwright-mcp/` directory at the repo root — this directory is gitignored and should never be committed; treat it as scratch space, safe to delete between sessions.
 
 ## Architecture
 
@@ -33,6 +45,12 @@ There are no test scripts defined yet in this repository.
 - Linting is centralized: a single root `eslint.config.js` applies different rule sets by path glob — browser globals + React/React Hooks rules for `apps/client/**/*.{ts,tsx}`, and Node globals for `apps/server/**/*.ts` — then disables stylistic rules via `eslint-config-prettier` so Prettier owns formatting.
 - Prettier/formatting is also centralized at the root (`.prettierrc.json`, `.prettierignore`) and applies across both apps.
 - The two apps are otherwise fully independent (separate builds, no shared package/lib between them yet).
+
+### Server (apps/server)
+
+- **Database**: PostgreSQL with Prisma ORM and `@prisma/adapter-pg` driver; database URL via `DATABASE_URL` environment variable. Schema lives in `apps/server/prisma/schema.prisma`; generated client output goes to `apps/server/src/generated/prisma` (gitignored).
+- **Authentication**: User registration via `POST /auth/register` with email format validation, password length validation (≥8 chars), bcryptjs password hashing, and JWT token generation (`JWT_SECRET` from env).
+- **Testing**: Vitest + supertest for E2E integration tests; all tests run against PostgreSQL with database reset between runs.
 
 ## Documentation maintenance
 

@@ -6,3 +6,8 @@ coverage
 .env
 .env.local
 *.log
+apps/server/src/generated
+
+# Playwright MCP output (screenshots, traces) — see docs on using Playwright MCP for UI feedback
+.playwright-mcp/
+.playwright-cli/

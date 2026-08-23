@@ -1,0 +1,21 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--color-foreground);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-muted-foreground);
+}
