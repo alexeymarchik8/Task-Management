@@ -19,6 +19,26 @@ describe('join-requests routes authorization', () => {
     const res = await request(app).delete('/join-requests/some-id');
     expect(res.status).toBe(401);
   });
+
+  it('rejects an unauthorized GET /join-requests/pending request', async () => {
+    const res = await request(app).get('/join-requests/pending');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an unauthorized GET /join-requests/pending/count request', async () => {
+    const res = await request(app).get('/join-requests/pending/count');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an unauthorized POST /join-requests/:id/approve request', async () => {
+    const res = await request(app).post('/join-requests/some-id/approve');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an unauthorized POST /join-requests/:id/reject request', async () => {
+    const res = await request(app).post('/join-requests/some-id/reject');
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('POST /projects/join', () => {
@@ -260,5 +280,321 @@ describe('DELETE /join-requests/:id', () => {
     expect(res.status).toBe(404);
     const found = await prisma.joinRequest.findUnique({ where: { id: joinRequest.id } });
     expect(found).not.toBeNull();
+  });
+});
+
+describe('GET /join-requests/pending', () => {
+  beforeEach(async () => {
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it("returns pending join requests for the owner's projects", async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    const pendingRequest = await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'pending' },
+    });
+    await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'approved' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .get('/join-requests/pending')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].id).toBe(pendingRequest.id);
+    expect(res.body[0].userId).toBe(applicant.id);
+    expect(res.body[0].projectId).toBe(project.id);
+  });
+
+  it('does not return pending requests for projects the user does not own', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'pending' },
+    });
+    const other = await prisma.user.create({
+      data: { email: 'other@example.com', password: 'hashed' },
+    });
+    const token = generateToken(other.id);
+
+    const res = await request(app)
+      .get('/join-requests/pending')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+});
+
+describe('POST /join-requests/:id/approve', () => {
+  beforeEach(async () => {
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('approves a pending request and adds the applicant as a member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    const joinRequest = await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'pending' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/join-requests/${joinRequest.id}/approve`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const updated = await prisma.joinRequest.findUnique({ where: { id: joinRequest.id } });
+    expect(updated?.status).toBe('approved');
+    const membership = await prisma.projectMember.findUnique({
+      where: { userId_projectId: { userId: applicant.id, projectId: project.id } },
+    });
+    expect(membership).not.toBeNull();
+    expect(membership?.role).toBe('member');
+  });
+
+  it('rejects approval by a non-owner and does not change status', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    const joinRequest = await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'pending' },
+    });
+    const intruder = await prisma.user.create({
+      data: { email: 'intruder@example.com', password: 'hashed' },
+    });
+    const token = generateToken(intruder.id);
+
+    const res = await request(app)
+      .post(`/join-requests/${joinRequest.id}/approve`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+    const updated = await prisma.joinRequest.findUnique({ where: { id: joinRequest.id } });
+    expect(updated?.status).toBe('pending');
+    const membership = await prisma.projectMember.findUnique({
+      where: { userId_projectId: { userId: applicant.id, projectId: project.id } },
+    });
+    expect(membership).toBeNull();
+  });
+
+  it('returns 404 for a nonexistent join request', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post('/join-requests/nonexistent-id/approve')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when the request is not pending', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    const joinRequest = await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'approved' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/join-requests/${joinRequest.id}/approve`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /join-requests/:id/reject', () => {
+  beforeEach(async () => {
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('rejects a pending request without adding a member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    const joinRequest = await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'pending' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/join-requests/${joinRequest.id}/reject`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const updated = await prisma.joinRequest.findUnique({ where: { id: joinRequest.id } });
+    expect(updated?.status).toBe('rejected');
+    const membership = await prisma.projectMember.findUnique({
+      where: { userId_projectId: { userId: applicant.id, projectId: project.id } },
+    });
+    expect(membership).toBeNull();
+  });
+
+  it('rejects rejection by a non-owner and does not change status', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    const joinRequest = await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'pending' },
+    });
+    const intruder = await prisma.user.create({
+      data: { email: 'intruder@example.com', password: 'hashed' },
+    });
+    const token = generateToken(intruder.id);
+
+    const res = await request(app)
+      .post(`/join-requests/${joinRequest.id}/reject`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+    const updated = await prisma.joinRequest.findUnique({ where: { id: joinRequest.id } });
+    expect(updated?.status).toBe('pending');
+  });
+
+  it('returns 404 for a nonexistent join request', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post('/join-requests/nonexistent-id/reject')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when the request is not pending', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    const joinRequest = await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'rejected' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/join-requests/${joinRequest.id}/reject`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /join-requests/pending/count', () => {
+  beforeEach(async () => {
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it("returns the count of pending join requests for the owner's projects", async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const applicant = await prisma.user.create({
+      data: { email: 'applicant@example.com', password: 'hashed' },
+    });
+    await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'pending' },
+    });
+    await prisma.joinRequest.create({
+      data: { userId: applicant.id, projectId: project.id, status: 'approved' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .get('/join-requests/pending/count')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBe(1);
+  });
+
+  it('returns 0 for a user with no projects or requests', async () => {
+    const user = await prisma.user.create({
+      data: { email: 'lonely@example.com', password: 'hashed' },
+    });
+    const token = generateToken(user.id);
+
+    const res = await request(app)
+      .get('/join-requests/pending/count')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBe(0);
   });
 });
