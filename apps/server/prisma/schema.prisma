@@ -13,4 +13,36 @@ model User {
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
+
+  ownedProjects  Project[]
+  projectMembers ProjectMember[]
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  owner   User            @relation(fields: [ownerId], references: [id])
+  members ProjectMember[]
+}
+
+enum ProjectRole {
+  owner
+  member
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  userId    String
+  projectId String
+  role      ProjectRole
+  createdAt DateTime    @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@unique([userId, projectId])
 }
