@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import { Register } from './pages/Register';
-import styles from './App.module.css';
+import styles from './App.module.scss';
 
 function Dashboard() {
   return (

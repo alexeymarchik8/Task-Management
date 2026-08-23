@@ -16,11 +16,11 @@
   color: var(--color-destructive);
   font-size: 14px;
   font-weight: 500;
-}
 
-.alertIcon {
-  flex-shrink: 0;
-  margin-top: 1px;
+  .alertIcon {
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
 }
 
 .field {
@@ -48,25 +48,25 @@
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease;
-}
 
-.input::placeholder {
-  color: var(--color-muted-foreground);
-}
+  &::placeholder {
+    color: var(--color-muted-foreground);
+  }
 
-.input:hover:not(:disabled) {
-  border-color: var(--color-primary);
-}
+  &:hover:not(:disabled) {
+    border-color: var(--color-primary);
+  }
 
-.input:focus-visible {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18);
-}
+  &:focus-visible {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18);
+  }
 
-.input:disabled {
-  background: var(--color-muted);
-  color: var(--color-muted-foreground);
-  cursor: not-allowed;
+  &:disabled {
+    background: var(--color-muted);
+    color: var(--color-muted-foreground);
+    cursor: not-allowed;
+  }
 }
 
 .hint {
@@ -91,24 +91,24 @@
   transition:
     background-color 180ms ease,
     transform 120ms ease;
-}
 
-.submit:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
+  &:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+  }
 
-.submit:active:not(:disabled) {
-  transform: scale(0.98);
-}
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
 
-.submit:focus-visible {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 2px;
-}
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
 
-.submit:disabled {
-  background: var(--color-muted-foreground);
-  cursor: not-allowed;
+  &:disabled {
+    background: var(--color-muted-foreground);
+    cursor: not-allowed;
+  }
 }
 
 .spinner {

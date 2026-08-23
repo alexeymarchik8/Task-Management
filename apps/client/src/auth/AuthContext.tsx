@@ -1,13 +1,9 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Provider, useDispatch, useSelector } from 'react-redux';
+import { createAppStore, type AppDispatch, type RootState } from '../store/store';
+import { login as loginAction, type AuthUser, type LoginData } from '../store/authSlice';
 
-export interface AuthUser {
-  id: string;
-  email: string;
-}
-
-interface LoginData extends AuthUser {
-  token: string;
-}
+export type { AuthUser } from '../store/authSlice';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -15,39 +11,19 @@ interface AuthContextValue {
   login: (data: LoginData) => void;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-function readStoredUser(): AuthUser | null {
-  const token = localStorage.getItem('token');
-  const storedUser = localStorage.getItem('user');
-
-  if (!token || !storedUser) {
-    return null;
-  }
-
-  return JSON.parse(storedUser) as AuthUser;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => readStoredUser());
+  const [store] = useState(() => createAppStore());
 
-  const login = ({ token, ...authUser }: LoginData) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(authUser));
-    setUser(authUser);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, isAuthenticated: user !== null, login }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <Provider store={store}>{children}</Provider>;
 }
 
 export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const user = useSelector((state: RootState) => state.auth.user);
+  const dispatch = useDispatch<AppDispatch>();
+
+  return {
+    user,
+    isAuthenticated: user !== null,
+    login: (data: LoginData) => dispatch(loginAction(data)),
+  };
 }
