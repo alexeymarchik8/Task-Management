@@ -14,15 +14,19 @@ Run from this directory, or via `npm run <script> --workspace=apps/server` from 
 npm run dev     # tsx watch src/index.ts — runs the server with hot reload (http://localhost:3000)
 npm run build   # tsc -b — type-check and compile to dist/
 npm run start   # node dist/index.js — run the compiled build
+npm test        # vitest run — E2E tests (supertest) against the real PostgreSQL database
 ```
 
-Linting and formatting are run from the repo root (`npm run lint`, `npm run format`), not from this package — the root ESLint config applies Node globals to `apps/server/**/*.ts`.
+Linting and formatting are run from the repo root (`npm run lint`, `npm run format`), not from this package — the root ESLint config applies Node globals to `apps/server/**/*.ts` and ignores the generated Prisma client (`src/generated/**`).
 
 ## Architecture
 
-- Single-file entry point: `src/index.ts` creates the Express app, registers `express.json()` middleware, and exposes a `GET /health` endpoint returning `{ status: 'ok' }`.
-- Port is read from `process.env.PORT`, defaulting to `3000`.
-- No routing modules, database layer, or additional middleware exist yet — the server is currently a minimal scaffold.
+- `src/app.ts` builds and exports the Express `app` (middleware + routes) without starting a listener, so tests can import it directly via `supertest`. `src/index.ts` imports `app` and calls `.listen()`.
+- **CORS**: `cors` middleware allows the client dev origin (`CLIENT_ORIGIN` env var, defaults to `http://localhost:5173`) so the browser-based client can call the API cross-origin.
+- `GET /health` returns `{ status: 'ok' }`. Port is read from `process.env.PORT`, defaulting to `3000`.
+- **Database**: PostgreSQL via Prisma ORM (`prisma/schema.prisma`, `User` model with `id`/`email`/`password`/`createdAt`). Prisma Client is generated to `src/generated/prisma` (gitignored) using the `provider = "prisma-client-js"` generator, and instantiated in `src/db/prisma.ts` with the `@prisma/adapter-pg` driver adapter over `DATABASE_URL`. Run `npx prisma migrate dev` from this directory after schema changes.
+- **Auth**: `POST /auth/register` (`src/auth/register.ts`) validates email format and password length (≥8 chars), hashes the password with `bcryptjs`, enforces email uniqueness (Prisma `P2002` → 409), and returns `{ id, email, token }` where `token` is a JWT signed with `JWT_SECRET` (`src/auth/jwt.ts`) containing the user id.
+- **Testing**: Vitest + supertest E2E tests (`src/**/*.test.ts`) run against the real PostgreSQL database (reachable via the pre-configured SSH tunnel to `localhost:5432`); each test resets relevant tables in `beforeEach`. `vitest.config.ts` disables file parallelism so tests sharing the database don't race.
 
 ## Documentation maintenance
 
