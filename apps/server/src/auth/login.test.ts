@@ -6,6 +6,7 @@ import { prisma } from '../db/prisma.js';
 
 describe('POST /auth/login', () => {
   beforeEach(async () => {
+    await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
     await prisma.user.deleteMany();
