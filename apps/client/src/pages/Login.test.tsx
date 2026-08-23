@@ -2,21 +2,21 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { Register } from './Register';
+import { Login } from './Login';
 import { AuthProvider } from '../auth/AuthContext';
 import * as authApi from '../api/authApi';
 
 vi.mock('../api/authApi', async () => {
   const actual = await vi.importActual<typeof authApi>('../api/authApi');
-  return { ...actual, registerUser: vi.fn() };
+  return { ...actual, loginUser: vi.fn() };
 });
 
-function renderRegisterPage(initialEntries: string[] = ['/register']) {
+function renderLoginPage(initialEntries: string[] = ['/login']) {
   return render(
     <AuthProvider>
       <MemoryRouter initialEntries={initialEntries}>
         <Routes>
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<p>Dashboard page</p>} />
         </Routes>
       </MemoryRouter>
@@ -24,24 +24,24 @@ function renderRegisterPage(initialEntries: string[] = ['/register']) {
   );
 }
 
-describe('Register page', () => {
+describe('Login page', () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.mocked(authApi.registerUser).mockReset();
+    vi.mocked(authApi.loginUser).mockReset();
   });
 
-  test('redirects to the dashboard after successful registration', async () => {
-    vi.mocked(authApi.registerUser).mockResolvedValue({
+  test('redirects to the dashboard after successful login', async () => {
+    vi.mocked(authApi.loginUser).mockResolvedValue({
       id: '1',
       email: 'user@example.com',
       token: 'jwt-token',
     });
     const user = userEvent.setup();
 
-    renderRegisterPage();
+    renderLoginPage();
     await user.type(screen.getByLabelText(/email/i), 'user@example.com');
     await user.type(screen.getByLabelText(/пароль/i), 'password123');
-    await user.click(screen.getByRole('button', { name: /зарегистрироваться/i }));
+    await user.click(screen.getByRole('button', { name: /войти/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Dashboard page')).toBeInTheDocument();
@@ -52,14 +52,17 @@ describe('Register page', () => {
     localStorage.setItem('token', 'jwt-token');
     localStorage.setItem('user', JSON.stringify({ id: '1', email: 'user@example.com' }));
 
-    renderRegisterPage();
+    renderLoginPage();
 
     expect(screen.getByText('Dashboard page')).toBeInTheDocument();
   });
 
-  test('contains a link to the login page', () => {
-    renderRegisterPage();
+  test('contains a link to the register page', () => {
+    renderLoginPage();
 
-    expect(screen.getByRole('link', { name: /войти/i })).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('link', { name: /зарегистрироваться/i })).toHaveAttribute(
+      'href',
+      '/register',
+    );
   });
 });
