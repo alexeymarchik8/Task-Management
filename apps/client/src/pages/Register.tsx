@@ -1,4 +1,4 @@
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { RegistrationForm } from '../components/RegistrationForm';
 import { useAuth } from '../auth/AuthContext';
 import { RegisterHeader } from './register/RegisterHeader';
@@ -22,6 +22,9 @@ export function Register() {
             navigate('/dashboard', { replace: true });
           }}
         />
+        <p className={styles.switchLine}>
+          Уже есть аккаунт? <Link to="/login">Войти</Link>
+        </p>
       </div>
     </main>
   );

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { registerRouter } from './auth/register.js';
+import { loginRouter } from './auth/login.js';
 
 export const app = express();
 
@@ -12,3 +13,4 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/auth', registerRouter);
+app.use('/auth', loginRouter);
