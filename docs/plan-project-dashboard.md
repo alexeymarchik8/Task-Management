@@ -39,11 +39,11 @@
 **Затрагивает:** frontend
 **Задачи:**
 
-- [ ] Тест: рендер 5 колонок (Backlog/To Do/In Progress/In Review/Done) с карточками, полученными из API.
-- [ ] Тест: неавторизованный пользователь на `/dashboard/:projectId` перенаправляется на `/login`.
-- [ ] `api/tasksApi.ts` — `listTasks`, `createTask`, `updateTask`, `deleteTask`.
-- [ ] `pages/Dashboard` (проект берётся из `useParams().projectId`) + `components/KanbanBoard` с `Column`/`TaskCard`.
-- [ ] Группировка задач по статусу на 5 колонок.
+- [x] Тест: рендер 5 колонок (Backlog/To Do/In Progress/In Review/Done) с карточками, полученными из API.
+- [x] Тест: неавторизованный пользователь на `/dashboard/:projectId` перенаправляется на `/login`.
+- [x] `api/tasksApi.ts` — `listTasks`, `createTask`, `updateTask`, `deleteTask`.
+- [x] `pages/Dashboard` (проект берётся из `useParams().projectId`) + `components/KanbanBoard` с `Column`/`TaskCard`.
+- [x] Группировка задач по статусу на 5 колонок.
 
 **Когда готова:** Тесты фазы проходят; открыв `/dashboard/:projectId`, видно доску с реальными задачами проекта.
 
