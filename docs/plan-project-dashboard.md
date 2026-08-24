@@ -11,11 +11,11 @@
 **Затрагивает:** backend, database
 **Задачи:**
 
-- [ ] Тест: `GET /projects/:projectId/tasks` для участника проекта возвращает пустой список для нового проекта.
-- [ ] Тест: `POST /projects/:projectId/tasks` с валидным `title` создаёт задачу со статусом `backlog` по умолчанию и возвращает 201.
-- [ ] Добавить модель `Task` (+ enum `TaskStatus`, `TaskPriority`) в `prisma/schema.prisma`, миграция.
-- [ ] Создать `modules/tasks/` (routes/controller/repository/types) с `POST` и `GET` списка задач проекта.
-- [ ] Подключить роуты в `app.ts`, защитить `verifyToken` + проверкой членства пользователя в проекте.
+- [x] Тест: `GET /projects/:projectId/tasks` для участника проекта возвращает пустой список для нового проекта.
+- [x] Тест: `POST /projects/:projectId/tasks` с валидным `title` создаёт задачу со статусом `backlog` по умолчанию и возвращает 201.
+- [x] Добавить модель `Task` (+ enum `TaskStatus`, `TaskPriority`) в `prisma/schema.prisma`, миграция.
+- [x] Создать `modules/tasks/` (routes/controller/repository/types) с `POST` и `GET` списка задач проекта.
+- [x] Подключить роуты в `app.ts`, защитить `verifyToken` + проверкой членства пользователя в проекте.
 
 **Когда готова:** Тесты фазы проходят; через API можно создать задачу в проекте и получить список задач этого проекта.
 

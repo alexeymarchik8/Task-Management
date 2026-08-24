@@ -1,0 +1,167 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import request from 'supertest';
+import { app } from '../../app.js';
+import { prisma } from '../../db/prisma.js';
+import { generateToken } from '../../services/tokenService.js';
+
+describe('tasks routes authorization', () => {
+  it('rejects an unauthorized POST /projects/:projectId/tasks request', async () => {
+    const res = await request(app).post('/projects/some-project-id/tasks').send({ title: 'Test' });
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an unauthorized GET /projects/:projectId/tasks request', async () => {
+    const res = await request(app).get('/projects/some-project-id/tasks');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('POST /projects/:projectId/tasks', () => {
+  beforeEach(async () => {
+    await prisma.task.deleteMany();
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('creates a task with a valid title and defaults to backlog status', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Write the report' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.id).toBeDefined();
+    expect(res.body.title).toBe('Write the report');
+    expect(res.body.status).toBe('backlog');
+    expect(res.body.priority).toBe('medium');
+    expect(res.body.projectId).toBe(project.id);
+  });
+
+  it('rejects a request without a title and creates no task', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+    const count = await prisma.task.count();
+    expect(count).toBe(0);
+  });
+
+  it('rejects a task creation request from a user who is not a project member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const outsider = await prisma.user.create({
+      data: { email: 'outsider@example.com', password: 'hashed' },
+    });
+    const token = generateToken(outsider.id);
+
+    const res = await request(app)
+      .post(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Write the report' });
+
+    expect(res.status).toBe(403);
+    const count = await prisma.task.count();
+    expect(count).toBe(0);
+  });
+});
+
+describe('GET /projects/:projectId/tasks', () => {
+  beforeEach(async () => {
+    await prisma.task.deleteMany();
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('returns an empty list for a new project with no tasks', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('returns the tasks belonging to the project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.task.create({ data: { title: 'Task A', projectId: project.id } });
+    await prisma.task.create({ data: { title: 'Task B', projectId: project.id } });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+  });
+
+  it('rejects a request from a user who is not a project member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const outsider = await prisma.user.create({
+      data: { email: 'outsider@example.com', password: 'hashed' },
+    });
+    const token = generateToken(outsider.id);
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+  });
+});
