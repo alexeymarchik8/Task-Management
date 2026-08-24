@@ -1,9 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import { registerRouter } from './auth/register.js';
-import { loginRouter } from './auth/login.js';
-import { projectsRouter } from './projects/projects.js';
-import { joinRequestsRouter } from './join-requests/joinRequests.js';
+import { authRouter } from './modules/auth/routes.js';
+import { projectsRouter } from './modules/projects/routes.js';
+import { joinRequestsRouter } from './modules/join-requests/routes.js';
 
 export const app = express();
 
@@ -14,7 +13,6 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use('/auth', registerRouter);
-app.use('/auth', loginRouter);
+app.use('/auth', authRouter);
 app.use(projectsRouter);
 app.use(joinRequestsRouter);
