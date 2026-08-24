@@ -9,8 +9,11 @@ export interface AppRoute {
   element: ReactElement;
 }
 
-export const routes: AppRoute[] = [
+export const protectedRoutes: AppRoute[] = [
   { path: '/dashboard', element: createElement(Dashboard) },
+];
+
+export const publicRoutes: AppRoute[] = [
   { path: '/register', element: createElement(Register) },
   { path: '/login', element: createElement(Login) },
 ];

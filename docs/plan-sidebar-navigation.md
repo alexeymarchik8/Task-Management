@@ -11,11 +11,11 @@
 **Затрагивает:** frontend
 **Задачи:**
 
-- [ ] Тест: сайдбар рендерит список проектов пользователя, полученный из `GET /projects`.
-- [ ] Тест: сайдбар недоступен/не рендерится для неавторизованного пользователя.
-- [ ] `components/AppLayout` (сайдбар + `Outlet`) как общий layout для защищённых страниц.
-- [ ] `api/projectsApi.ts` — `listProjects`.
-- [ ] `components/Sidebar` + `components/Sidebar/components/ProjectList`.
+- [x] Тест: сайдбар рендерит список проектов пользователя, полученный из `GET /projects`.
+- [x] Тест: сайдбар недоступен/не рендерится для неавторизованного пользователя.
+- [x] `components/AppLayout` (сайдбар + `Outlet`) как общий layout для защищённых страниц.
+- [x] `api/projectsApi.ts` — `listProjects`.
+- [x] `components/Sidebar` + `components/Sidebar/components/ProjectList`.
 
 **Когда готова:** Тесты фазы проходят; на защищённых страницах виден сайдбар со списком проектов пользователя.
 
