@@ -1,4 +1,4 @@
-import type { Task } from '../../../../api/tasksApi';
+import type { Task, TaskStatus } from '../../../../api/tasksApi';
 import type { ColumnConfig } from '../../config';
 import { TaskCard } from '../TaskCard';
 import styles from './Column.module.scss';
@@ -6,9 +6,12 @@ import styles from './Column.module.scss';
 interface ColumnProps {
   column: ColumnConfig;
   tasks: Task[];
+  onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onEdit: (task: Task) => void;
+  onDelete: (taskId: string) => void;
 }
 
-export function Column({ column, tasks }: ColumnProps) {
+export function Column({ column, tasks, onStatusChange, onEdit, onDelete }: ColumnProps) {
   return (
     <section className={styles.column} aria-label={column.label}>
       <header className={styles.header}>
@@ -17,7 +20,13 @@ export function Column({ column, tasks }: ColumnProps) {
       </header>
       <div className={styles.cards}>
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            onStatusChange={(status) => onStatusChange(task.id, status)}
+            onEdit={() => onEdit(task)}
+            onDelete={() => onDelete(task.id)}
+          />
         ))}
       </div>
     </section>

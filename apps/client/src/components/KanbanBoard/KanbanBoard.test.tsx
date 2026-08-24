@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import { KanbanBoard } from './index';
 import type { Task } from '../../api/tasksApi';
 
+const noop = () => {};
+
 function makeTask(overrides: Partial<Task>): Task {
   return {
     id: overrides.id ?? 'task-1',
@@ -21,7 +23,7 @@ function makeTask(overrides: Partial<Task>): Task {
 
 describe('KanbanBoard', () => {
   test('renders all 5 status columns', () => {
-    render(<KanbanBoard tasks={[]} />);
+    render(<KanbanBoard tasks={[]} onStatusChange={noop} onEdit={noop} onDelete={noop} />);
 
     expect(screen.getByRole('region', { name: 'Backlog' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'To Do' })).toBeInTheDocument();
@@ -36,7 +38,7 @@ describe('KanbanBoard', () => {
       makeTask({ id: '2', title: 'Done task', status: 'done' }),
     ];
 
-    render(<KanbanBoard tasks={tasks} />);
+    render(<KanbanBoard tasks={tasks} onStatusChange={noop} onEdit={noop} onDelete={noop} />);
 
     const backlogColumn = screen.getByRole('region', { name: 'Backlog' });
     const doneColumn = screen.getByRole('region', { name: 'Done' });
