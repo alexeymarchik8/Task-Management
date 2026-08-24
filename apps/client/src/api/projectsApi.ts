@@ -1,5 +1,7 @@
 import { ApiError } from './authApi';
 
+export { ApiError } from './authApi';
+
 const API_BASE_URL = 'http://localhost:3000';
 
 export interface Project {
