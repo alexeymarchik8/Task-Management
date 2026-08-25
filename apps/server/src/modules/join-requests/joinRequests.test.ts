@@ -43,6 +43,7 @@ describe('join-requests routes authorization', () => {
 
 describe('POST /projects/join', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
@@ -145,6 +146,7 @@ describe('POST /projects/join', () => {
 
 describe('GET /join-requests', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
@@ -201,6 +203,7 @@ describe('GET /join-requests', () => {
 
 describe('DELETE /join-requests/:id', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
@@ -285,6 +288,7 @@ describe('DELETE /join-requests/:id', () => {
 
 describe('GET /join-requests/pending', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
@@ -349,6 +353,7 @@ describe('GET /join-requests/pending', () => {
 
 describe('POST /join-requests/:id/approve', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
@@ -453,6 +458,7 @@ describe('POST /join-requests/:id/approve', () => {
 
 describe('POST /join-requests/:id/reject', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
@@ -552,6 +558,7 @@ describe('POST /join-requests/:id/reject', () => {
 
 describe('GET /join-requests/pending/count', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();

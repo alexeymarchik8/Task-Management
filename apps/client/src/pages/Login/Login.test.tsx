@@ -17,7 +17,7 @@ function renderLoginPage(initialEntries: string[] = ['/login']) {
       <MemoryRouter initialEntries={initialEntries}>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<p>Dashboard page</p>} />
+          <Route path="/homepage" element={<p>Dashboard page</p>} />
         </Routes>
       </MemoryRouter>
     </AuthProvider>,

@@ -9,7 +9,7 @@ export function Register() {
   const navigate = useNavigate();
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/homepage" replace />;
   }
 
   return (
@@ -19,7 +19,7 @@ export function Register() {
         <RegistrationForm
           onSuccess={(response) => {
             login(response);
-            navigate('/dashboard', { replace: true });
+            navigate('/homepage', { replace: true });
           }}
         />
         <p className={styles.switchLine}>

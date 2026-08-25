@@ -6,7 +6,7 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/homepage" replace />} />
         <Route element={<AppLayout />}>
           {protectedRoutes.map((route) => (
             <Route key={route.path} path={route.path} element={route.element} />

@@ -8,7 +8,7 @@ export function Login() {
   const navigate = useNavigate();
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/homepage" replace />;
   }
 
   return (
@@ -30,7 +30,7 @@ export function Login() {
         <LoginForm
           onSuccess={(response) => {
             login(response);
-            navigate('/dashboard', { replace: true });
+            navigate('/homepage', { replace: true });
           }}
         />
         <p className={styles.switchLine}>

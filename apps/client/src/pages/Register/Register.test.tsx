@@ -17,7 +17,7 @@ function renderRegisterPage(initialEntries: string[] = ['/register']) {
       <MemoryRouter initialEntries={initialEntries}>
         <Routes>
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<p>Dashboard page</p>} />
+          <Route path="/homepage" element={<p>Dashboard page</p>} />
         </Routes>
       </MemoryRouter>
     </AuthProvider>,
