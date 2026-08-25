@@ -14,15 +14,37 @@ Run from this directory, or via `npm run <script> --workspace=apps/client` from 
 npm run dev       # start Vite dev server (http://localhost:5173)
 npm run build     # tsc -b type-check, then vite build
 npm run preview   # preview the production build
+npm test          # vitest run — component/unit tests (jsdom)
 ```
 
 Linting and formatting are run from the repo root (`npm run lint`, `npm run format`), not from this package — the root ESLint config applies React/React Hooks rules to `apps/client/**/*.{ts,tsx}`.
 
 ## Architecture
 
-- Entry point: `src/main.tsx` mounts `src/App.tsx` into `index.html`.
-- No routing, state management, or API layer is set up yet — the app is currently a minimal scaffold.
+- Entry point: `src/main.tsx` mounts `src/App.tsx` into `index.html`. `App.tsx` only wraps `router/AppRouter` in `auth/AuthContext`'s `AuthProvider` — no routes or page markup live here.
+- **Folder structure**:
+  - `src/pages/<PageName>/` — one folder per page: `index.tsx` (the page component), `<PageName>.module.scss`, `<PageName>.test.tsx`, and page-only subcomponents under `components/` (e.g. `pages/Register/components/RegisterHeader.tsx`). A `config.ts` and/or `utils/` subfolder is added only when a page actually needs one.
+  - `src/components/<ComponentName>/` — same shape as pages (`index.tsx` + `.module.scss` + `.test.tsx`). Subcomponents used only by one component are nested under that component's own `components/` folder rather than living as siblings (e.g. `components/RegistrationForm/components/{EmailField,PasswordField,FormAlert,SubmitButton}/index.tsx`).
+  - `src/router/` — `routes.ts` exports two flat `{ path, element }[]` arrays: `protectedRoutes` (pages that need auth + the sidebar) and `publicRoutes` (`/register`, `/login`). `AppRouter.tsx` renders `BrowserRouter`/`Routes`: the `/` → `/dashboard` redirect, `protectedRoutes` nested under a pathless `<Route element={<AppLayout />}>` (so their `path` stays absolute, e.g. `/dashboard`, while `AppLayout` provides the auth guard + sidebar), and `publicRoutes` rendered directly.
+  - `src/assets/` — static assets (images, icons, fonts); currently empty (`.gitkeep`).
+  - `src/auth/`, `src/api/`, `src/store/`, `src/test/` — unchanged, see below.
+- **Routing**: `react-router-dom` (`BrowserRouter`), routes declared in `src/router/routes.ts` and rendered by `src/router/AppRouter.tsx` (see folder structure above for the protected/public split).
+- **State management**: Redux Toolkit. `src/store/authSlice.ts` holds the authenticated `AuthUser` (`id`, `email`) and a `login` reducer that persists the JWT and user to `localStorage` (`token`, `user` keys); `src/store/store.ts` exports `createAppStore()`. `src/auth/AuthContext.tsx` wraps this in an `AuthProvider` (creates one store instance per mount via `Provider` from `react-redux`, reading `localStorage` at creation time) and a `useAuth()` hook (`useSelector`/`useDispatch`) — the public API (`AuthProvider`, `useAuth`) is unchanged from the previous Context-based implementation, so callers don't need to know Redux is used underneath.
+- **API layer**: `src/api/authApi.ts` — thin `fetch` wrapper (`registerUser`, `loginUser`) against the server at `http://localhost:3000`; throws `ApiError` (with `status`/`message`) on non-2xx responses. `src/api/projectsApi.ts` (`listProjects`, `createProject`) and `src/api/joinRequestsApi.ts` (`joinProject`) follow the same pattern, reading the JWT from `localStorage.getItem('token')` and sending `Authorization: Bearer <token>` on every call; both re-export `ApiError` from `authApi.ts` so callers only need one import.
+- **Layout & Sidebar**: `src/components/AppLayout/index.tsx` is the element for every `protectedRoutes` entry — it redirects to `/login` if `useAuth().isAuthenticated` is false, otherwise renders `<Outlet />` (the matched page) next to `src/components/Sidebar/index.tsx` (positioned after the content, so it sits on the right). `Sidebar` itself also renders nothing when unauthenticated (defense in depth), and otherwise fetches `listProjects()` on mount and holds the list in local state. It renders, top to bottom: `components/ProjectSearch` (controlled input, filters the in-memory project list by name — no server-side search), `components/ProjectList` (each project links to `/dashboard/:projectId`, which only fully resolves once merged with `feature/project-dashboard`), `components/CreateProjectForm` (calls `createProject`, appends the result to Sidebar's project list on success — no refetch), and `components/JoinByCodeForm` (calls `joinProject`, shows either the server's error message — e.g. "Вы уже в проекте" — or a "Заявка отправлена" confirmation).
+- **Registration**: `src/components/RegistrationForm/index.tsx` composes `src/components/RegistrationForm/components/{EmailField,PasswordField,FormAlert,SubmitButton}/index.tsx` (loading/disabled state, `role="alert"` error message) and is used by `src/pages/Register/index.tsx` (composing `src/pages/Register/components/RegisterHeader.tsx`), which redirects an already-authenticated user to `/dashboard`, redirects to `/dashboard` after a successful registration, and links to `/login`.
+- **Login**: `src/components/LoginForm/index.tsx` (email/password fields, loading/disabled state, single generic `role="alert"` error that does not reveal whether the email or password was wrong) is used by `src/pages/Login/index.tsx`, which redirects an already-authenticated user to `/dashboard`, redirects to `/dashboard` after a successful login, and links to `/register`.
+- **Dashboard**: `src/pages/Dashboard/index.tsx` — placeholder landing page shown after login/registration (nested under `AppLayout`, so the sidebar is already visible next to it); the real kanban board lives on `feature/project-dashboard`.
+- **Styling**: SCSS Modules (`*.module.scss`, co-located with their component) plus a global `src/index.scss`; see [Frontend conventions](#frontend-conventions).
+- **Testing**: Vitest + `@testing-library/react` (jsdom environment, config in `vitest.config.ts`, setup in `src/test/setup.ts`); test files live alongside source as `*.test.ts(x)`.
 - `tsconfig.json` / `tsconfig.tsbuildinfo` drive TypeScript project-reference builds used by `tsc -b`.
+
+## Frontend conventions
+
+- **State management**: use Redux Toolkit (`@reduxjs/toolkit` + `react-redux`) for shared/global application state (e.g. auth, cross-page data). Organize as feature slices (`createSlice`) under a `src/store/` (or per-feature `slice.ts`) structure, with a single `configureStore` root store. Local/UI-only state that doesn't need to be shared still belongs in component state (`useState`/`useReducer`).
+- **Component/page decomposition**: every page (`src/pages/`) and component (`src/components/`) is a folder named after it, containing `index.tsx`, a co-located `*.module.scss`, a `*.test.tsx`, and (only when actually needed) a `config.ts` and/or `utils/` subfolder. Avoid large files mixing many JSX elements/responsibilities — split into small, focused pieces composed together. A subcomponent used by only one parent is nested under that parent's own `components/` folder, not placed as a sibling.
+- **Routing**: add a new page by adding an `{ path, element }` entry to `src/router/routes.ts` — do not add routes directly in `App.tsx`.
+- **Styling**: use a CSS preprocessor (Sass/SCSS) for stylesheets — `.scss` files, one per component (co-located next to the component, e.g. `ComponentName/ComponentName.module.scss`), using SCSS features (nesting, variables, mixins) instead of plain CSS.
 
 ## Documentation maintenance
 

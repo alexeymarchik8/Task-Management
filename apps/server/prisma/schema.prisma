@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  ownedProjects  Project[]
+  projectMembers ProjectMember[]
+  joinRequests   JoinRequest[]
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  owner        User            @relation(fields: [ownerId], references: [id])
+  members      ProjectMember[]
+  joinRequests JoinRequest[]
+}
+
+enum ProjectRole {
+  owner
+  member
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  userId    String
+  projectId String
+  role      ProjectRole
+  createdAt DateTime    @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@unique([userId, projectId])
+}
+
+enum JoinRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+model JoinRequest {
+  id        String            @id @default(uuid())
+  userId    String
+  projectId String
+  status    JoinRequestStatus @default(pending)
+  createdAt DateTime          @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+}

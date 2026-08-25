@@ -1,9 +1,11 @@
+import { AuthProvider } from './auth/AuthContext';
+import { AppRouter } from './router/AppRouter';
+
 function App() {
   return (
-    <main>
-      <h1>Task Management</h1>
-      <p>React client is running.</p>
-    </main>
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
   );
 }
 
