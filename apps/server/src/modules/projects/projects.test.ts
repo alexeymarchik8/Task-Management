@@ -18,6 +18,7 @@ describe('projects routes authorization', () => {
 
 describe('POST /projects', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
@@ -79,6 +80,7 @@ describe('POST /projects', () => {
 
 describe('GET /projects', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.joinRequest.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();

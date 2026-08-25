@@ -4,6 +4,7 @@ import { generateUniqueProjectCode } from './projectCodeService.js';
 
 describe('generateUniqueProjectCode', () => {
   beforeEach(async () => {
+    await prisma.task.deleteMany();
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
     await prisma.user.deleteMany();
