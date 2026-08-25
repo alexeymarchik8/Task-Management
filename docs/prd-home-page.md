@@ -1,7 +1,7 @@
 # PRD: Home Page
 
 **Дата**: 2026-08-23
-**Статус**: Draft
+**Статус**: Superseded — заменено `docs/prd-home-analytics.md` (аналитика) и `docs/prd-sidebar-navigation.md` (список проектов/вступление по коду/заявки переехали в сайдбар), 2026-08-24.
 
 ## Цель
 

@@ -1,0 +1,29 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-foreground);
+  text-decoration: none;
+}
+
+.item:hover {
+  background: var(--color-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--color-muted-foreground);
+}

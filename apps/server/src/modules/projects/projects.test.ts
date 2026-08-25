@@ -14,6 +14,11 @@ describe('projects routes authorization', () => {
     const res = await request(app).get('/projects');
     expect(res.status).toBe(401);
   });
+
+  it('rejects an unauthorized GET /projects/:id/members request', async () => {
+    const res = await request(app).get('/projects/some-id/members');
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('POST /projects', () => {
@@ -138,5 +143,68 @@ describe('GET /projects', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
+  });
+});
+
+describe('GET /projects/:id/members', () => {
+  beforeEach(async () => {
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('returns the members of a project with their email and role', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/members`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    const emails = res.body.map((m: { email: string }) => m.email).sort();
+    expect(emails).toEqual(['member@example.com', 'owner@example.com']);
+    const ownerEntry = res.body.find((m: { userId: string }) => m.userId === owner.id);
+    expect(ownerEntry.role).toBe('owner');
+    const memberEntry = res.body.find((m: { userId: string }) => m.userId === member.id);
+    expect(memberEntry.role).toBe('member');
+  });
+
+  it('rejects a user who is not a member of the project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const outsider = await prisma.user.create({
+      data: { email: 'outsider@example.com', password: 'hashed' },
+    });
+    const token = generateToken(outsider.id);
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/members`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
   });
 });

@@ -1,5 +1,26 @@
 import { prisma } from '../../db/prisma.js';
-import type { Project } from '../../generated/prisma/index.js';
+import type { Project, ProjectMember } from '../../generated/prisma/index.js';
+
+export function findMembership(userId: string, projectId: string): Promise<ProjectMember | null> {
+  return prisma.projectMember.findUnique({
+    where: { userId_projectId: { userId, projectId } },
+  });
+}
+
+export async function findMembersByProject(
+  projectId: string,
+): Promise<{ userId: string; email: string; role: string }[]> {
+  const members = await prisma.projectMember.findMany({
+    where: { projectId },
+    include: { user: { select: { email: true } } },
+  });
+
+  return members.map((member) => ({
+    userId: member.userId,
+    email: member.user.email,
+    role: member.role,
+  }));
+}
 
 export function createProjectWithOwner(
   name: string,
