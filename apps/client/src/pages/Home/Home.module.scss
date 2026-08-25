@@ -1,0 +1,91 @@
+.page {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.title {
+  margin: 0 0 20px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.error {
+  margin: 0 0 16px;
+  font-size: 15px;
+  color: var(--color-destructive);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+  padding: 16px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.summaryLabel {
+  font-size: 13px;
+  color: var(--color-muted-foreground);
+}
+
+.summaryValue {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.projectsTitle {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.emptyState {
+  color: var(--color-muted-foreground);
+}
+
+.projectList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.projectRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  font: inherit;
+  text-align: left;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.projectRow:hover {
+  border-color: var(--color-primary);
+}
+
+.projectName {
+  font-weight: 600;
+}
+
+.projectStats {
+  font-size: 13px;
+  color: var(--color-muted-foreground);
+}
