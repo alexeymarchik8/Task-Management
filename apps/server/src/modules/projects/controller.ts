@@ -22,3 +22,16 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
   const projects = await projectsRepository.findProjectsForUser(req.userId!);
   res.status(200).json(projects);
 }
+
+export async function listMembers(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const projectId = req.params.id;
+
+  const membership = await projectsRepository.findMembership(req.userId!, projectId);
+  if (!membership) {
+    res.status(403).json({ error: 'Доступ запрещён' });
+    return;
+  }
+
+  const members = await projectsRepository.findMembersByProject(projectId);
+  res.status(200).json(members);
+}
