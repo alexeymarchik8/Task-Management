@@ -1,12 +1,19 @@
 .page {
   min-height: 100vh;
-  padding: 24px;
+  padding: 32px;
 }
 
 .title {
-  margin: 0 0 20px;
-  font-size: 22px;
-  font-weight: 700;
+  margin: 0 0 24px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-card-foreground);
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
 }
 
 .error {
@@ -16,8 +23,8 @@
 }
 
 .summary {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
   margin-bottom: 32px;
 }
@@ -25,23 +32,29 @@
 .summaryCard {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 120px;
-  padding: 16px;
+  gap: 6px;
+  padding: 18px;
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-base);
+}
+
+.summaryCard:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 .summaryLabel {
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-muted-foreground);
 }
 
 .summaryValue {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-card-foreground);
 }
 
 .projectsTitle {
@@ -67,6 +80,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   width: 100%;
   padding: 14px 16px;
   font: inherit;
@@ -75,10 +90,19 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .projectRow:hover {
   border-color: var(--color-primary);
+  box-shadow: var(--shadow-card);
+}
+
+.projectRow:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
 }
 
 .projectName {

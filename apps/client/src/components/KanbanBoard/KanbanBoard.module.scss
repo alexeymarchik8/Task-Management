@@ -2,5 +2,16 @@
   display: flex;
   gap: 16px;
   overflow-x: auto;
-  padding: 4px;
+  padding: 4px 4px 12px;
+  scroll-snap-type: x proximity;
+}
+
+.board > * {
+  scroll-snap-align: start;
+}
+
+@media (max-width: 768px) {
+  .board {
+    gap: 12px;
+  }
 }
