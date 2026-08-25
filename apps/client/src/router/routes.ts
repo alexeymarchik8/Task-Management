@@ -10,7 +10,7 @@ export interface AppRoute {
 }
 
 export const routes: AppRoute[] = [
-  { path: '/dashboard', element: createElement(Dashboard) },
+  { path: '/dashboard/:projectId', element: createElement(Dashboard) },
   { path: '/register', element: createElement(Register) },
   { path: '/login', element: createElement(Login) },
 ];

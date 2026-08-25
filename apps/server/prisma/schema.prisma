@@ -17,6 +17,7 @@ model User {
   ownedProjects  Project[]
   projectMembers ProjectMember[]
   joinRequests   JoinRequest[]
+  assignedTasks  Task[]
 }
 
 model Project {
@@ -29,6 +30,7 @@ model Project {
   owner        User            @relation(fields: [ownerId], references: [id])
   members      ProjectMember[]
   joinRequests JoinRequest[]
+  tasks        Task[]
 }
 
 enum ProjectRole {
@@ -64,4 +66,34 @@ model JoinRequest {
 
   user    User    @relation(fields: [userId], references: [id])
   project Project @relation(fields: [projectId], references: [id])
+}
+
+enum TaskStatus {
+  backlog
+  todo
+  in_progress
+  in_review
+  done
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(backlog)
+  priority    TaskPriority @default(medium)
+  dueDate     DateTime?
+  assigneeId  String?
+  projectId   String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id])
+  assignee User?   @relation(fields: [assigneeId], references: [id])
 }

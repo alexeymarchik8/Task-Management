@@ -3,6 +3,7 @@ import cors from 'cors';
 import { authRouter } from './modules/auth/routes.js';
 import { projectsRouter } from './modules/projects/routes.js';
 import { joinRequestsRouter } from './modules/join-requests/routes.js';
+import { tasksRouter } from './modules/tasks/routes.js';
 
 export const app = express();
 
@@ -16,3 +17,4 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRouter);
 app.use(projectsRouter);
 app.use(joinRequestsRouter);
+app.use(tasksRouter);
