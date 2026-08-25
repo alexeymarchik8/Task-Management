@@ -15,7 +15,15 @@ vi.mock('../../api/projectsApi', async () => {
 
 vi.mock('../../api/joinRequestsApi', async () => {
   const actual = await vi.importActual<typeof joinRequestsApi>('../../api/joinRequestsApi');
-  return { ...actual, joinProject: vi.fn() };
+  return {
+    ...actual,
+    joinProject: vi.fn(),
+    listMyJoinRequests: vi.fn(),
+    listPendingJoinRequests: vi.fn(),
+    deleteJoinRequest: vi.fn(),
+    approveJoinRequest: vi.fn(),
+    rejectJoinRequest: vi.fn(),
+  };
 });
 
 function renderSidebar() {
@@ -39,6 +47,11 @@ describe('Sidebar', () => {
     vi.mocked(projectsApi.listProjects).mockReset();
     vi.mocked(projectsApi.createProject).mockReset();
     vi.mocked(joinRequestsApi.joinProject).mockReset();
+    vi.mocked(joinRequestsApi.listMyJoinRequests).mockReset().mockResolvedValue([]);
+    vi.mocked(joinRequestsApi.listPendingJoinRequests).mockReset().mockResolvedValue([]);
+    vi.mocked(joinRequestsApi.deleteJoinRequest).mockReset();
+    vi.mocked(joinRequestsApi.approveJoinRequest).mockReset();
+    vi.mocked(joinRequestsApi.rejectJoinRequest).mockReset();
   });
 
   test('renders nothing for an unauthenticated user', () => {
@@ -137,5 +150,127 @@ describe('Sidebar', () => {
     await user.click(screen.getByRole('button', { name: 'Вступить' }));
 
     expect(await screen.findByText('Заявка отправлена')).toBeInTheDocument();
+  });
+
+  test('shows the statuses of my join requests', async () => {
+    loginAsTestUser();
+    vi.mocked(projectsApi.listProjects).mockResolvedValue([]);
+    vi.mocked(joinRequestsApi.listMyJoinRequests).mockResolvedValue([
+      { id: 'jr1', userId: '1', projectId: 'p1', status: 'pending' },
+      { id: 'jr2', userId: '1', projectId: 'p2', status: 'rejected' },
+    ]);
+
+    renderSidebar();
+
+    await waitFor(() => {
+      expect(screen.getByText('Ожидает')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Отклонена')).toBeInTheDocument();
+  });
+
+  test('hiding a rejected join request removes it from the list', async () => {
+    loginAsTestUser();
+    vi.mocked(projectsApi.listProjects).mockResolvedValue([]);
+    vi.mocked(joinRequestsApi.listMyJoinRequests).mockResolvedValue([
+      { id: 'jr1', userId: '1', projectId: 'p1', status: 'rejected' },
+    ]);
+    vi.mocked(joinRequestsApi.deleteJoinRequest).mockResolvedValue({ id: 'jr1' });
+    const user = userEvent.setup();
+
+    renderSidebar();
+    await waitFor(() => expect(screen.getByText('Отклонена')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Скрыть' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Отклонена')).not.toBeInTheDocument();
+    });
+    expect(joinRequestsApi.deleteJoinRequest).toHaveBeenCalledWith('jr1');
+  });
+
+  test('does not show a hide button for a pending join request', async () => {
+    loginAsTestUser();
+    vi.mocked(projectsApi.listProjects).mockResolvedValue([]);
+    vi.mocked(joinRequestsApi.listMyJoinRequests).mockResolvedValue([
+      { id: 'jr1', userId: '1', projectId: 'p1', status: 'pending' },
+    ]);
+
+    renderSidebar();
+
+    await waitFor(() => expect(screen.getByText('Ожидает')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Скрыть' })).not.toBeInTheDocument();
+  });
+
+  test('owner sees a badge with the pending request count and can approve', async () => {
+    loginAsTestUser();
+    vi.mocked(projectsApi.listProjects).mockResolvedValue([]);
+    vi.mocked(joinRequestsApi.listPendingJoinRequests).mockResolvedValue([
+      {
+        id: 'jr1',
+        userId: '2',
+        projectId: 'p1',
+        status: 'pending',
+        user: { id: '2', email: 'applicant@example.com' },
+      },
+    ]);
+    vi.mocked(joinRequestsApi.approveJoinRequest).mockResolvedValue({
+      id: 'jr1',
+      status: 'approved',
+    });
+    const user = userEvent.setup();
+
+    renderSidebar();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Ожидающих заявок: 1')).toBeInTheDocument();
+    });
+    expect(screen.getByText('applicant@example.com')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Принять' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('applicant@example.com')).not.toBeInTheDocument();
+    });
+    expect(joinRequestsApi.approveJoinRequest).toHaveBeenCalledWith('jr1');
+  });
+
+  test('owner can reject a pending request', async () => {
+    loginAsTestUser();
+    vi.mocked(projectsApi.listProjects).mockResolvedValue([]);
+    vi.mocked(joinRequestsApi.listPendingJoinRequests).mockResolvedValue([
+      {
+        id: 'jr1',
+        userId: '2',
+        projectId: 'p1',
+        status: 'pending',
+        user: { id: '2', email: 'applicant@example.com' },
+      },
+    ]);
+    vi.mocked(joinRequestsApi.rejectJoinRequest).mockResolvedValue({
+      id: 'jr1',
+      status: 'rejected',
+    });
+    const user = userEvent.setup();
+
+    renderSidebar();
+    await waitFor(() => expect(screen.getByText('applicant@example.com')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Отклонить' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('applicant@example.com')).not.toBeInTheDocument();
+    });
+    expect(joinRequestsApi.rejectJoinRequest).toHaveBeenCalledWith('jr1');
+  });
+
+  test('hides the pending-requests section when there are none', async () => {
+    loginAsTestUser();
+    vi.mocked(projectsApi.listProjects).mockResolvedValue([]);
+    vi.mocked(joinRequestsApi.listPendingJoinRequests).mockResolvedValue([]);
+
+    renderSidebar();
+    await waitFor(() => expect(joinRequestsApi.listPendingJoinRequests).toHaveBeenCalled());
+
+    expect(screen.queryByRole('button', { name: 'Принять' })).not.toBeInTheDocument();
   });
 });
