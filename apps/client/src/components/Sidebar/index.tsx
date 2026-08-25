@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { listProjects, type Project } from '../../api/projectsApi';
 import {
@@ -16,10 +17,13 @@ import { CreateProjectForm } from './components/CreateProjectForm';
 import { JoinByCodeForm } from './components/JoinByCodeForm';
 import { MyJoinRequests } from './components/MyJoinRequests';
 import { PendingRequests } from './components/PendingRequests';
+import { People } from './components/People';
+import { InfoButton } from './components/InfoButton';
 import styles from './Sidebar.module.scss';
 
 export function Sidebar() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { projectId } = useParams<{ projectId: string }>();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
@@ -45,6 +49,11 @@ export function Sidebar() {
   const filteredProjects = useMemo(
     () => projects.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase())),
     [projects, searchQuery],
+  );
+
+  const openProject = useMemo(
+    () => projects.find((p) => p.id === projectId),
+    [projects, projectId],
   );
 
   const hideJoinRequest = (id: string) => {
@@ -107,6 +116,12 @@ export function Sidebar() {
           />
         </section>
       )}
+
+      <section className={styles.section}>
+        <h2 className={styles.heading}>Люди</h2>
+        <People />
+        <InfoButton project={openProject} currentUserId={user?.id ?? ''} />
+      </section>
     </aside>
   );
 }

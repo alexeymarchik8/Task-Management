@@ -16,6 +16,14 @@ export interface CreateProjectRequest {
   name: string;
 }
 
+export type ProjectRole = 'owner' | 'member';
+
+export interface Member {
+  userId: string;
+  email: string;
+  role: ProjectRole;
+}
+
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem('token');
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
@@ -43,4 +51,11 @@ export async function createProject(data: CreateProjectRequest): Promise<Project
     body: JSON.stringify(data),
   });
   return parseResponse<Project>(response);
+}
+
+export async function listMembers(projectId: string): Promise<Member[]> {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/members`, {
+    headers: authHeaders(),
+  });
+  return parseResponse<Member[]>(response);
 }
