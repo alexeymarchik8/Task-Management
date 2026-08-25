@@ -9,13 +9,13 @@ vi.mock('../../../../api/projectsApi', async () => {
   return { ...actual, listMembers: vi.fn() };
 });
 
-function renderWithProject(projectId?: string) {
+function renderWithProject(projectId?: string, refreshKey?: number) {
   const path = projectId ? `/dashboard/${projectId}` : '/homepage';
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/dashboard/:projectId" element={<People />} />
-        <Route path="/homepage" element={<People />} />
+        <Route path="/dashboard/:projectId" element={<People refreshKey={refreshKey} />} />
+        <Route path="/homepage" element={<People refreshKey={refreshKey} />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -48,6 +48,40 @@ describe('People', () => {
     expect(screen.getByText('Владелец')).toBeInTheDocument();
     expect(screen.getByText('Участник')).toBeInTheDocument();
     expect(projectsApi.listMembers).toHaveBeenCalledWith('p1');
+  });
+
+  test('refetches members when refreshKey changes, e.g. after a join request is approved', async () => {
+    vi.mocked(projectsApi.listMembers).mockResolvedValue([
+      { userId: '1', email: 'owner@example.com', role: 'owner' },
+    ]);
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/dashboard/p1']}>
+        <Routes>
+          <Route path="/dashboard/:projectId" element={<People refreshKey={0} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(projectsApi.listMembers).toHaveBeenCalledTimes(1));
+
+    vi.mocked(projectsApi.listMembers).mockResolvedValue([
+      { userId: '1', email: 'owner@example.com', role: 'owner' },
+      { userId: '2', email: 'newmember@example.com', role: 'member' },
+    ]);
+
+    rerender(
+      <MemoryRouter initialEntries={['/dashboard/p1']}>
+        <Routes>
+          <Route path="/dashboard/:projectId" element={<People refreshKey={1} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('newmember@example.com')).toBeInTheDocument();
+    });
+    expect(projectsApi.listMembers).toHaveBeenCalledTimes(2);
   });
 
   test('does not error when the members fetch fails', async () => {

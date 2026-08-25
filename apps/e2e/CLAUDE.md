@@ -1,0 +1,34 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+Playwright end-to-end test suite. Part of the `task-management` npm-workspaces monorepo (see root `CLAUDE.md`). Drives the real client (`apps/client`, Vite dev server) against the real server (`apps/server`) and the real PostgreSQL database — no mocking. This is the "full user journey across the whole stack" layer, distinct from `apps/client`'s component-level Vitest/RTL tests and `apps/server`'s per-module Vitest/supertest API tests.
+
+## Commands
+
+Run from this directory, or via `npm run test --workspace=apps/e2e` from the repo root (also included in the root `npm test`):
+
+```bash
+npx playwright test              # run the full suite headless
+npx playwright test --ui         # interactive UI mode
+npx playwright test --headed     # watch the browser
+npx playwright show-report       # open the HTML report from the last run
+```
+
+**Prerequisites**: both dev servers must already be running (`npm run dev:client` and `npm run dev:server` from the repo root) and reachable at `http://localhost:5173` / `http://localhost:3000`, with the database migrated. `playwright.config.ts` does not start them for you.
+
+## Architecture
+
+- `playwright.config.ts` — `baseURL: http://localhost:5173`, single `chromium` project, `workers: 1` (tests share the real dev database — the server's own Vitest suite disables parallelism for the same reason, see `apps/server/CLAUDE.md`).
+- `tests/helpers.ts` — `uniqueEmail(prefix)` (timestamp+random, avoids the `409 email already registered` collision across runs/tests since nothing resets this database between runs), `registerUser(page, email, password?)`, `createProject(page, name)`.
+- Each spec file registers its own fresh user(s) per test via `uniqueEmail` rather than relying on any fixture/seed data, so tests are independent and safe to re-run without resetting the database.
+- `tests/auth.spec.ts` — registration redirects to `/homepage`; unauthenticated access to `/homepage` and `/dashboard/:id` redirects to `/login`.
+- `tests/project-dashboard.spec.ts` — create a task from the Kanban board, move it between columns, delete it.
+- `tests/sidebar-people.spec.ts` — the owner's role renders consistently as "Владелец" in both the People list and the Info panel; a second user (separate `browser.newContext()`, since `localStorage` — and therefore the JWT — is per-origin, not per-tab) joins by the project's code, the owner approves the request, and the new member appears in the People list.
+- `tests/home-analytics.spec.ts` — a created task is reflected in `/homepage`'s summary and per-project breakdown, clicking a project navigates to its dashboard, and a user with no projects gets the empty state instead of an error.
+
+## Documentation maintenance
+
+Whenever a change affects this suite's architecture (new helpers, new spec files' scope, config changes), update this file (and the root `CLAUDE.md` if the change is monorepo-wide) as part of the same change.

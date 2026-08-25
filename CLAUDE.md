@@ -4,12 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Task Management is an npm-workspaces monorepo with two apps:
+Task Management is an npm-workspaces monorepo with three apps:
 
 - `apps/client` — React + TypeScript + Vite
 - `apps/server` — Express.js + TypeScript
+- `apps/e2e` — Playwright end-to-end tests, driving the real client against the real server/database
 
-See `apps/client/CLAUDE.md` and `apps/server/CLAUDE.md` for per-app details.
+See `apps/client/CLAUDE.md`, `apps/server/CLAUDE.md`, and `apps/e2e/CLAUDE.md` for per-app details.
 
 ## Commands (run from repo root)
 
@@ -26,8 +27,10 @@ npm run format:check
 ```
 
 ```bash
-npm test             # run tests in all workspaces (client: vitest; server: vitest + supertest)
+npm test             # run tests in all workspaces (client: vitest; server: vitest + supertest; e2e: playwright)
 ```
+
+`npm test`'s e2e portion (`apps/e2e`) requires both dev servers already running — see `apps/e2e/CLAUDE.md`.
 
 ## Development Approach
 
@@ -42,9 +45,9 @@ The Playwright MCP server is configured in `.mcp.json` for visual/UI verificatio
 ## Architecture
 
 - npm workspaces: root `package.json` declares `apps/*` as workspaces; each app has its own `package.json`, `tsconfig.json`, and independently manages its own dependencies/build.
-- Linting is centralized: a single root `eslint.config.js` applies different rule sets by path glob — browser globals + React/React Hooks rules for `apps/client/**/*.{ts,tsx}`, and Node globals for `apps/server/**/*.ts` — then disables stylistic rules via `eslint-config-prettier` so Prettier owns formatting.
-- Prettier/formatting is also centralized at the root (`.prettierrc.json`, `.prettierignore`) and applies across both apps.
-- The two apps are otherwise fully independent (separate builds, no shared package/lib between them yet).
+- Linting is centralized: a single root `eslint.config.js` applies different rule sets by path glob — browser globals + React/React Hooks rules for `apps/client/**/*.{ts,tsx}`, and Node globals for `apps/server/**/*.ts` and `apps/e2e/**/*.ts` — then disables stylistic rules via `eslint-config-prettier` so Prettier owns formatting.
+- Prettier/formatting is also centralized at the root (`.prettierrc.json`, `.prettierignore`) and applies across all apps.
+- The apps are otherwise fully independent (separate builds, no shared package/lib between them), except `apps/e2e` which drives `apps/client` and `apps/server` at runtime (over HTTP) without importing their code.
 
 ### Server (apps/server)
 

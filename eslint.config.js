@@ -41,5 +41,11 @@ export default tseslint.config(
       globals: globals.node,
     },
   },
+  {
+    files: ['apps/e2e/**/*.ts'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
   prettier,
 );

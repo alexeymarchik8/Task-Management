@@ -11,3 +11,9 @@ apps/server/src/generated
 # Playwright MCP output (screenshots, traces) — see docs on using Playwright MCP for UI feedback
 .playwright-mcp/
 .playwright-cli/
+
+# Playwright test runner output (apps/e2e)
+apps/e2e/test-results/
+apps/e2e/playwright-report/
+apps/e2e/blob-report/
+apps/e2e/.cache/

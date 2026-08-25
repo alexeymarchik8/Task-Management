@@ -8,7 +8,11 @@ const ROLE_LABELS: Record<Member['role'], string> = {
   member: 'Участник',
 };
 
-export function People() {
+interface PeopleProps {
+  refreshKey?: number;
+}
+
+export function People({ refreshKey }: PeopleProps) {
   const { projectId } = useParams<{ projectId: string }>();
   const [members, setMembers] = useState<Member[]>([]);
 
@@ -21,7 +25,7 @@ export function People() {
     listMembers(projectId)
       .then(setMembers)
       .catch(() => setMembers([]));
-  }, [projectId]);
+  }, [projectId, refreshKey]);
 
   if (!projectId) {
     return <p className={styles.empty}>Проект не открыт</p>;
