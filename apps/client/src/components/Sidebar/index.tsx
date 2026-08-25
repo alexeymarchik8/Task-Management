@@ -29,6 +29,7 @@ export function Sidebar() {
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
   const [myJoinRequests, setMyJoinRequests] = useState<JoinRequest[]>([]);
   const [pendingJoinRequests, setPendingJoinRequests] = useState<PendingJoinRequest[]>([]);
+  const [membersRefreshKey, setMembersRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -65,6 +66,7 @@ export function Sidebar() {
   const approvePendingRequest = (id: string) => {
     approveJoinRequest(id).then(() => {
       setPendingJoinRequests((prev) => prev.filter((r) => r.id !== id));
+      setMembersRefreshKey((key) => key + 1);
     });
   };
 
@@ -119,7 +121,7 @@ export function Sidebar() {
 
       <section className={styles.section}>
         <h2 className={styles.heading}>Люди</h2>
-        <People />
+        <People refreshKey={membersRefreshKey} />
         <InfoButton project={openProject} currentUserId={user?.id ?? ''} />
       </section>
     </aside>
