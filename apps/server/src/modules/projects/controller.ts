@@ -15,7 +15,7 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
   const code = await generateUniqueProjectCode();
   const project = await projectsRepository.createProjectWithOwner(name, code, req.userId!);
 
-  res.status(201).json({ id: project.id, name: project.name, code: project.code });
+  res.status(201).json(project);
 }
 
 export async function listProjects(req: AuthenticatedRequest, res: Response): Promise<void> {

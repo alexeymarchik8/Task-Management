@@ -30,7 +30,7 @@ describe('POST /projects', () => {
     await prisma.user.deleteMany();
   });
 
-  it('creates a project and returns 201 with id, name, and code', async () => {
+  it('creates a project and returns 201 with id, name, code, ownerId, and createdAt', async () => {
     const user = await prisma.user.create({
       data: { email: 'alice@example.com', password: 'hashed' },
     });
@@ -45,6 +45,8 @@ describe('POST /projects', () => {
     expect(res.body.id).toBeDefined();
     expect(res.body.name).toBe('My Project');
     expect(res.body.code).toMatch(/^[A-Za-z0-9]{8}$/);
+    expect(res.body.ownerId).toBe(user.id);
+    expect(res.body.createdAt).toBeDefined();
   });
 
   it('rejects a request without a name and creates no project', async () => {
