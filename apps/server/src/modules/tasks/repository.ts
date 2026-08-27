@@ -14,8 +14,23 @@ export function createTask(
   return prisma.task.create({ data: { ...data, projectId } });
 }
 
-export function findTasksByProject(projectId: string): Promise<Task[]> {
-  return prisma.task.findMany({ where: { projectId } });
+export interface TaskFilters {
+  status?: string;
+  priority?: string;
+  assigneeId?: string;
+  search?: string;
+}
+
+export function findTasksByProject(projectId: string, filters: TaskFilters = {}): Promise<Task[]> {
+  return prisma.task.findMany({
+    where: {
+      projectId,
+      ...(filters.status && { status: filters.status as Task['status'] }),
+      ...(filters.priority && { priority: filters.priority as Task['priority'] }),
+      ...(filters.assigneeId && { assigneeId: filters.assigneeId }),
+      ...(filters.search && { title: { contains: filters.search, mode: 'insensitive' } }),
+    },
+  });
 }
 
 export function findTaskById(id: string): Promise<Task | null> {

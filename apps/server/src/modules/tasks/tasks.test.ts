@@ -245,6 +245,148 @@ describe('GET /projects/:projectId/tasks', () => {
   });
 });
 
+describe('GET /projects/:projectId/tasks filters', () => {
+  beforeEach(async () => {
+    await prisma.task.deleteMany();
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  async function setupProjectWithTasks() {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    await prisma.task.create({
+      data: {
+        title: 'Write the report',
+        status: 'todo',
+        priority: 'high',
+        projectId: project.id,
+        assigneeId: owner.id,
+      },
+    });
+    await prisma.task.create({
+      data: {
+        title: 'Review the PR',
+        status: 'in_progress',
+        priority: 'low',
+        projectId: project.id,
+        assigneeId: member.id,
+      },
+    });
+    await prisma.task.create({
+      data: { title: 'Plan the sprint', status: 'todo', priority: 'low', projectId: project.id },
+    });
+    const token = generateToken(owner.id);
+    return { owner, member, project, token };
+  }
+
+  it('filters by status', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?status=todo`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body.every((t: { status: string }) => t.status === 'todo')).toBe(true);
+  });
+
+  it('filters by priority', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?priority=low`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body.every((t: { priority: string }) => t.priority === 'low')).toBe(true);
+  });
+
+  it('filters by assigneeId', async () => {
+    const { project, member, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?assigneeId=${member.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].title).toBe('Review the PR');
+  });
+
+  it('filters by a case-insensitive search on the title', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?search=REPORT`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].title).toBe('Write the report');
+  });
+
+  it('combines multiple filters', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?status=todo&priority=high`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].title).toBe('Write the report');
+  });
+
+  it('returns an empty list when no task matches the filters', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?search=nonexistent`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('rejects an invalid status filter', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?status=archived`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an invalid priority filter', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?priority=urgent`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('PATCH /tasks/:id', () => {
   beforeEach(async () => {
     await prisma.task.deleteMany();

@@ -52,6 +52,7 @@ export async function createTask(req: AuthenticatedRequest, res: Response): Prom
 
 export async function listTasks(req: AuthenticatedRequest, res: Response): Promise<void> {
   const { projectId } = req.params;
+  const { status, priority, assigneeId, search } = req.query;
 
   const membership = await tasksRepository.findMembership(req.userId!, projectId);
   if (!membership) {
@@ -59,7 +60,22 @@ export async function listTasks(req: AuthenticatedRequest, res: Response): Promi
     return;
   }
 
-  const tasks = await tasksRepository.findTasksByProject(projectId);
+  if (status !== undefined && (typeof status !== 'string' || !VALID_STATUSES.has(status))) {
+    res.status(400).json({ error: 'Недопустимый статус' });
+    return;
+  }
+
+  if (priority !== undefined && (typeof priority !== 'string' || !VALID_PRIORITIES.has(priority))) {
+    res.status(400).json({ error: 'Недопустимый приоритет' });
+    return;
+  }
+
+  const tasks = await tasksRepository.findTasksByProject(projectId, {
+    status: typeof status === 'string' ? status : undefined,
+    priority: typeof priority === 'string' ? priority : undefined,
+    assigneeId: typeof assigneeId === 'string' ? assigneeId : undefined,
+    search: typeof search === 'string' ? search : undefined,
+  });
   res.status(200).json(tasks);
 }
 
