@@ -19,6 +19,26 @@ describe('projects routes authorization', () => {
     const res = await request(app).get('/projects/some-id/members');
     expect(res.status).toBe(401);
   });
+
+  it('rejects an unauthorized PATCH /projects/:id request', async () => {
+    const res = await request(app).patch('/projects/some-id').send({ name: 'New name' });
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an unauthorized DELETE /projects/:id request', async () => {
+    const res = await request(app).delete('/projects/some-id');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an unauthorized DELETE /projects/:id/members/me request', async () => {
+    const res = await request(app).delete('/projects/some-id/members/me');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an unauthorized DELETE /projects/:id/members/:userId request', async () => {
+    const res = await request(app).delete('/projects/some-id/members/some-user-id');
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('POST /projects', () => {
@@ -210,5 +230,383 @@ describe('GET /projects/:id/members', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(403);
+  });
+});
+
+describe('PATCH /projects/:id', () => {
+  beforeEach(async () => {
+    await prisma.task.deleteMany();
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('lets the owner rename the project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Old name', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .patch(`/projects/${project.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'New name' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('New name');
+  });
+
+  it('rejects a rename from a non-owner member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Old name', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    const token = generateToken(member.id);
+
+    const res = await request(app)
+      .patch(`/projects/${project.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'New name' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects an empty name', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Old name', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .patch(`/projects/${project.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: '' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 for a nonexistent project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .patch('/projects/nonexistent-id')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'New name' });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('DELETE /projects/:id', () => {
+  beforeEach(async () => {
+    await prisma.task.deleteMany();
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('lets the owner delete the project, cascading tasks and members', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.task.create({ data: { title: 'Task A', projectId: project.id } });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .delete(`/projects/${project.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(await prisma.project.findUnique({ where: { id: project.id } })).toBeNull();
+    expect(await prisma.task.count({ where: { projectId: project.id } })).toBe(0);
+    expect(await prisma.projectMember.count({ where: { projectId: project.id } })).toBe(0);
+  });
+
+  it('rejects a delete from a non-owner member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    const token = generateToken(member.id);
+
+    const res = await request(app)
+      .delete(`/projects/${project.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+    expect(await prisma.project.findUnique({ where: { id: project.id } })).not.toBeNull();
+  });
+
+  it('returns 404 for a nonexistent project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .delete('/projects/nonexistent-id')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('DELETE /projects/:id/members/me', () => {
+  beforeEach(async () => {
+    await prisma.task.deleteMany();
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('lets a member leave the project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    const token = generateToken(member.id);
+
+    const res = await request(app)
+      .delete(`/projects/${project.id}/members/me`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const membership = await prisma.projectMember.findUnique({
+      where: { userId_projectId: { userId: member.id, projectId: project.id } },
+    });
+    expect(membership).toBeNull();
+  });
+
+  it('unassigns the leaving member from their tasks in the project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    const task = await prisma.task.create({
+      data: { title: 'Task A', projectId: project.id, assigneeId: member.id },
+    });
+    const token = generateToken(member.id);
+
+    await request(app)
+      .delete(`/projects/${project.id}/members/me`)
+      .set('Authorization', `Bearer ${token}`);
+
+    const updated = await prisma.task.findUnique({ where: { id: task.id } });
+    expect(updated?.assigneeId).toBeNull();
+  });
+
+  it('rejects the owner leaving their own project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .delete(`/projects/${project.id}/members/me`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+    const membership = await prisma.projectMember.findUnique({
+      where: { userId_projectId: { userId: owner.id, projectId: project.id } },
+    });
+    expect(membership).not.toBeNull();
+  });
+
+  it('returns 404 for a nonexistent project', async () => {
+    const user = await prisma.user.create({
+      data: { email: 'user@example.com', password: 'hashed' },
+    });
+    const token = generateToken(user.id);
+
+    const res = await request(app)
+      .delete('/projects/nonexistent-id/members/me')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('DELETE /projects/:id/members/:userId', () => {
+  beforeEach(async () => {
+    await prisma.task.deleteMany();
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it('lets the owner remove a member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .delete(`/projects/${project.id}/members/${member.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const membership = await prisma.projectMember.findUnique({
+      where: { userId_projectId: { userId: member.id, projectId: project.id } },
+    });
+    expect(membership).toBeNull();
+  });
+
+  it('rejects a non-owner removing a member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const other = await prisma.user.create({
+      data: { email: 'other@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: other.id, projectId: project.id, role: 'member' },
+    });
+    const token = generateToken(other.id);
+
+    const res = await request(app)
+      .delete(`/projects/${project.id}/members/${member.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects removing the owner', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .delete(`/projects/${project.id}/members/${owner.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 when the member does not exist in the project', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const outsider = await prisma.user.create({
+      data: { email: 'outsider@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .delete(`/projects/${project.id}/members/${outsider.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
   });
 });
