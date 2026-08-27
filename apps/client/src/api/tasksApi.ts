@@ -52,10 +52,25 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export async function listTasks(projectId: string): Promise<Task[]> {
-  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/tasks`, {
-    headers: authHeaders(),
-  });
+export interface TaskFilters {
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assigneeId?: string;
+  search?: string;
+}
+
+export async function listTasks(projectId: string, filters: TaskFilters = {}): Promise<Task[]> {
+  const params = new URLSearchParams();
+  if (filters.status) params.set('status', filters.status);
+  if (filters.priority) params.set('priority', filters.priority);
+  if (filters.assigneeId) params.set('assigneeId', filters.assigneeId);
+  if (filters.search) params.set('search', filters.search);
+  const query = params.toString();
+
+  const response = await fetch(
+    `${API_BASE_URL}/projects/${projectId}/tasks${query ? `?${query}` : ''}`,
+    { headers: authHeaders() },
+  );
   return parseResponse<Task[]>(response);
 }
 

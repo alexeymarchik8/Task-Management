@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { listProjects, type Project } from '../../api/projectsApi';
 import {
@@ -19,11 +19,14 @@ import { MyJoinRequests } from './components/MyJoinRequests';
 import { PendingRequests } from './components/PendingRequests';
 import { People } from './components/People';
 import { InfoButton } from './components/InfoButton';
+import { ProjectSettings } from './components/ProjectSettings';
+import { ThemeToggle } from '../ThemeToggle';
 import styles from './Sidebar.module.scss';
 
 export function Sidebar() {
   const { isAuthenticated, user } = useAuth();
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
@@ -76,12 +79,25 @@ export function Sidebar() {
     });
   };
 
+  const handleProjectRenamed = (updated: Project) => {
+    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  };
+
+  const handleProjectLeftOrDeleted = () => {
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    navigate('/homepage');
+  };
+
   if (!isAuthenticated) {
     return null;
   }
 
   return (
     <aside className={styles.sidebar} aria-label="Навигация">
+      <div className={styles.topBar}>
+        <ThemeToggle />
+      </div>
+
       <section className={styles.section}>
         <h2 className={styles.heading}>Проекты</h2>
         <ProjectSearch value={searchQuery} onChange={setSearchQuery} />
@@ -123,6 +139,13 @@ export function Sidebar() {
         <h2 className={styles.heading}>Люди</h2>
         <People refreshKey={membersRefreshKey} />
         <InfoButton project={openProject} currentUserId={user?.id ?? ''} />
+        <ProjectSettings
+          project={openProject}
+          currentUserId={user?.id ?? ''}
+          onRenamed={handleProjectRenamed}
+          onLeftOrDeleted={handleProjectLeftOrDeleted}
+          onMembersChanged={() => setMembersRefreshKey((key) => key + 1)}
+        />
       </section>
     </aside>
   );

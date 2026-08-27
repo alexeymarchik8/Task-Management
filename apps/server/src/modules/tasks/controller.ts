@@ -31,6 +31,14 @@ export async function createTask(req: AuthenticatedRequest, res: Response): Prom
     return;
   }
 
+  if (assigneeId !== undefined) {
+    const assigneeMembership = await tasksRepository.findMembership(assigneeId, projectId);
+    if (!assigneeMembership) {
+      res.status(400).json({ error: 'Исполнитель должен быть участником проекта' });
+      return;
+    }
+  }
+
   const task = await tasksRepository.createTask(projectId, {
     title,
     description,
@@ -44,6 +52,7 @@ export async function createTask(req: AuthenticatedRequest, res: Response): Prom
 
 export async function listTasks(req: AuthenticatedRequest, res: Response): Promise<void> {
   const { projectId } = req.params;
+  const { status, priority, assigneeId, search } = req.query;
 
   const membership = await tasksRepository.findMembership(req.userId!, projectId);
   if (!membership) {
@@ -51,7 +60,22 @@ export async function listTasks(req: AuthenticatedRequest, res: Response): Promi
     return;
   }
 
-  const tasks = await tasksRepository.findTasksByProject(projectId);
+  if (status !== undefined && (typeof status !== 'string' || !VALID_STATUSES.has(status))) {
+    res.status(400).json({ error: 'Недопустимый статус' });
+    return;
+  }
+
+  if (priority !== undefined && (typeof priority !== 'string' || !VALID_PRIORITIES.has(priority))) {
+    res.status(400).json({ error: 'Недопустимый приоритет' });
+    return;
+  }
+
+  const tasks = await tasksRepository.findTasksByProject(projectId, {
+    status: typeof status === 'string' ? status : undefined,
+    priority: typeof priority === 'string' ? priority : undefined,
+    assigneeId: typeof assigneeId === 'string' ? assigneeId : undefined,
+    search: typeof search === 'string' ? search : undefined,
+  });
   res.status(200).json(tasks);
 }
 
@@ -89,6 +113,14 @@ export async function updateTask(req: AuthenticatedRequest, res: Response): Prom
   if (dueDate !== undefined && Number.isNaN(Date.parse(dueDate))) {
     res.status(400).json({ error: 'Недопустимый срок выполнения' });
     return;
+  }
+
+  if (assigneeId !== undefined) {
+    const assigneeMembership = await tasksRepository.findMembership(assigneeId, task.projectId);
+    if (!assigneeMembership) {
+      res.status(400).json({ error: 'Исполнитель должен быть участником проекта' });
+      return;
+    }
   }
 
   const updated = await tasksRepository.updateTask(id, {

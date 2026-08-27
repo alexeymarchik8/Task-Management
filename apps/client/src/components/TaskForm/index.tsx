@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { createTask, updateTask, ApiError, type Task, type TaskPriority } from '../../api/tasksApi';
+import { listMembers, type Member } from '../../api/projectsApi';
 import styles from './TaskForm.module.scss';
 
 interface TaskFormProps {
@@ -14,8 +15,16 @@ export function TaskForm({ projectId, task, onSuccess, onCancel }: TaskFormProps
   const [description, setDescription] = useState(task?.description ?? '');
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'medium');
   const [dueDate, setDueDate] = useState(task?.dueDate ? task.dueDate.slice(0, 10) : '');
+  const [assigneeId, setAssigneeId] = useState(task?.assigneeId ?? '');
+  const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    listMembers(projectId)
+      .then(setMembers)
+      .catch(() => setMembers([]));
+  }, [projectId]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -27,6 +36,7 @@ export function TaskForm({ projectId, task, onSuccess, onCancel }: TaskFormProps
       description: description || undefined,
       priority,
       dueDate: dueDate || undefined,
+      assigneeId: assigneeId || undefined,
     };
 
     try {
@@ -108,6 +118,26 @@ export function TaskForm({ projectId, task, onSuccess, onCancel }: TaskFormProps
               disabled={isSubmitting}
             />
           </div>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="task-assignee">
+            Исполнитель
+          </label>
+          <select
+            id="task-assignee"
+            className={styles.select}
+            value={assigneeId}
+            onChange={(e) => setAssigneeId(e.target.value)}
+            disabled={isSubmitting}
+          >
+            <option value="">Не назначен</option>
+            {members.map((member) => (
+              <option key={member.userId} value={member.userId}>
+                {member.email}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className={styles.actions}>

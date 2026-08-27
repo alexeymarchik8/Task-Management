@@ -17,11 +17,50 @@
   border-color: var(--color-secondary);
 }
 
+.card.dragging {
+  opacity: 0.5;
+}
+
 .top {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 8px;
+}
+
+.dragHandle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 14px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  border-radius: var(--radius-sm);
+}
+
+.dragHandle:hover {
+  color: var(--color-foreground);
+  background: var(--color-muted);
+}
+
+.dragHandle:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.top .title {
+  flex: 1;
+}
+
+.top .deleteButton {
+  margin-left: auto;
 }
 
 .title {
@@ -74,8 +113,14 @@
 .meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
+}
+
+.assignee {
+  font-size: 12px;
+  color: var(--color-muted-foreground);
 }
 
 .priority {

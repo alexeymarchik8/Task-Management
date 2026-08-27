@@ -59,3 +59,36 @@ export async function listMembers(projectId: string): Promise<Member[]> {
   });
   return parseResponse<Member[]>(response);
 }
+
+export async function updateProject(id: string, data: { name: string }): Promise<Project> {
+  const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  });
+  return parseResponse<Project>(response);
+}
+
+export async function deleteProject(id: string): Promise<{ id: string }> {
+  const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return parseResponse<{ id: string }>(response);
+}
+
+export async function leaveProject(id: string): Promise<{ userId: string }> {
+  const response = await fetch(`${API_BASE_URL}/projects/${id}/members/me`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return parseResponse<{ userId: string }>(response);
+}
+
+export async function removeMember(id: string, userId: string): Promise<{ userId: string }> {
+  const response = await fetch(`${API_BASE_URL}/projects/${id}/members/${userId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return parseResponse<{ userId: string }>(response);
+}

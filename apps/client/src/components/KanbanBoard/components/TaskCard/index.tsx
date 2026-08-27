@@ -1,10 +1,13 @@
 import type { ChangeEvent } from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import type { Task, TaskStatus } from '../../../../api/tasksApi';
+import type { Member } from '../../../../api/projectsApi';
 import { COLUMNS } from '../../config';
 import styles from './TaskCard.module.scss';
 
 interface TaskCardProps {
   task: Task;
+  members?: Member[];
   onStatusChange: (status: TaskStatus) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -16,10 +19,32 @@ const PRIORITY_LABELS: Record<Task['priority'], string> = {
   high: 'High',
 };
 
-export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardProps) {
+export function TaskCard({ task, members, onStatusChange, onEdit, onDelete }: TaskCardProps) {
+  const assignee = members?.find((member) => member.userId === task.assigneeId);
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+  });
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
   return (
-    <article className={styles.card}>
+    <article
+      ref={setNodeRef}
+      style={style}
+      className={`${styles.card} ${isDragging ? styles.dragging : ''}`}
+    >
       <div className={styles.top}>
+        <button
+          type="button"
+          className={styles.dragHandle}
+          aria-label="Перетащить задачу"
+          {...attributes}
+          {...listeners}
+        >
+          ⠿
+        </button>
         <h3 className={styles.title}>{task.title}</h3>
         <button
           type="button"
@@ -38,6 +63,7 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
         {task.dueDate && (
           <span className={styles.dueDate}>{new Date(task.dueDate).toLocaleDateString()}</span>
         )}
+        <span className={styles.assignee}>{assignee ? assignee.email : 'Не назначен'}</span>
       </div>
       <div className={styles.actions}>
         <label className={styles.statusLabel} htmlFor={`status-${task.id}`}>

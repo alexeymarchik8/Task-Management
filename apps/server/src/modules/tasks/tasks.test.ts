@@ -103,6 +103,75 @@ describe('POST /projects/:projectId/tasks', () => {
     const count = await prisma.task.count();
     expect(count).toBe(0);
   });
+
+  it('rejects an invalid priority and creates no task', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Write the report', priority: 'urgent' });
+
+    expect(res.status).toBe(400);
+    const count = await prisma.task.count();
+    expect(count).toBe(0);
+  });
+
+  it('rejects an unparseable due date and creates no task', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Write the report', dueDate: 'not-a-date' });
+
+    expect(res.status).toBe(400);
+    const count = await prisma.task.count();
+    expect(count).toBe(0);
+  });
+
+  it('rejects assigning the task to a user who is not a project member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const outsider = await prisma.user.create({
+      data: { email: 'outsider@example.com', password: 'hashed' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .post(`/projects/${project.id}/tasks`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Write the report', assigneeId: outsider.id });
+
+    expect(res.status).toBe(400);
+    const count = await prisma.task.count();
+    expect(count).toBe(0);
+  });
 });
 
 describe('GET /projects/:projectId/tasks', () => {
@@ -173,6 +242,148 @@ describe('GET /projects/:projectId/tasks', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(403);
+  });
+});
+
+describe('GET /projects/:projectId/tasks filters', () => {
+  beforeEach(async () => {
+    await prisma.task.deleteMany();
+    await prisma.joinRequest.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  async function setupProjectWithTasks() {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const member = await prisma.user.create({
+      data: { email: 'member@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    await prisma.projectMember.create({
+      data: { userId: member.id, projectId: project.id, role: 'member' },
+    });
+    await prisma.task.create({
+      data: {
+        title: 'Write the report',
+        status: 'todo',
+        priority: 'high',
+        projectId: project.id,
+        assigneeId: owner.id,
+      },
+    });
+    await prisma.task.create({
+      data: {
+        title: 'Review the PR',
+        status: 'in_progress',
+        priority: 'low',
+        projectId: project.id,
+        assigneeId: member.id,
+      },
+    });
+    await prisma.task.create({
+      data: { title: 'Plan the sprint', status: 'todo', priority: 'low', projectId: project.id },
+    });
+    const token = generateToken(owner.id);
+    return { owner, member, project, token };
+  }
+
+  it('filters by status', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?status=todo`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body.every((t: { status: string }) => t.status === 'todo')).toBe(true);
+  });
+
+  it('filters by priority', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?priority=low`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body.every((t: { priority: string }) => t.priority === 'low')).toBe(true);
+  });
+
+  it('filters by assigneeId', async () => {
+    const { project, member, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?assigneeId=${member.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].title).toBe('Review the PR');
+  });
+
+  it('filters by a case-insensitive search on the title', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?search=REPORT`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].title).toBe('Write the report');
+  });
+
+  it('combines multiple filters', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?status=todo&priority=high`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].title).toBe('Write the report');
+  });
+
+  it('returns an empty list when no task matches the filters', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?search=nonexistent`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('rejects an invalid status filter', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?status=archived`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an invalid priority filter', async () => {
+    const { project, token } = await setupProjectWithTasks();
+
+    const res = await request(app)
+      .get(`/projects/${project.id}/tasks?priority=urgent`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
   });
 });
 
@@ -270,6 +481,122 @@ describe('PATCH /tasks/:id', () => {
       .send({ status: 'done' });
 
     expect(res.status).toBe(404);
+  });
+
+  it('rejects an invalid status', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const task = await prisma.task.create({ data: { title: 'Task A', projectId: project.id } });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .patch(`/tasks/${task.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'archived' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an invalid priority', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const task = await prisma.task.create({ data: { title: 'Task A', projectId: project.id } });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .patch(`/tasks/${task.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ priority: 'urgent' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an unparseable due date', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const task = await prisma.task.create({ data: { title: 'Task A', projectId: project.id } });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .patch(`/tasks/${task.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ dueDate: 'not-a-date' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects assigning the task to a user who is not a project member', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const task = await prisma.task.create({ data: { title: 'Task A', projectId: project.id } });
+    const outsider = await prisma.user.create({
+      data: { email: 'outsider@example.com', password: 'hashed' },
+    });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .patch(`/tasks/${task.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ assigneeId: outsider.id });
+
+    expect(res.status).toBe(400);
+    const found = await prisma.task.findUnique({ where: { id: task.id } });
+    expect(found?.assigneeId).toBeNull();
+  });
+
+  it('ignores an attempt to move the task to a different project via projectId', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@example.com', password: 'hashed' },
+    });
+    const project = await prisma.project.create({
+      data: { name: 'Project', code: 'AAAAAAAA', ownerId: owner.id },
+    });
+    const otherProject = await prisma.project.create({
+      data: { name: 'Other project', code: 'BBBBBBBB', ownerId: owner.id },
+    });
+    await prisma.projectMember.create({
+      data: { userId: owner.id, projectId: project.id, role: 'owner' },
+    });
+    const task = await prisma.task.create({ data: { title: 'Task A', projectId: project.id } });
+    const token = generateToken(owner.id);
+
+    const res = await request(app)
+      .patch(`/tasks/${task.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ projectId: otherProject.id, title: 'Still in the original project' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.projectId).toBe(project.id);
+    const found = await prisma.task.findUnique({ where: { id: task.id } });
+    expect(found?.projectId).toBe(project.id);
   });
 });
 
