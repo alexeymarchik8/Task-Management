@@ -1,10 +1,12 @@
 import type { ChangeEvent } from 'react';
 import type { Task, TaskStatus } from '../../../../api/tasksApi';
+import type { Member } from '../../../../api/projectsApi';
 import { COLUMNS } from '../../config';
 import styles from './TaskCard.module.scss';
 
 interface TaskCardProps {
   task: Task;
+  members?: Member[];
   onStatusChange: (status: TaskStatus) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -16,7 +18,9 @@ const PRIORITY_LABELS: Record<Task['priority'], string> = {
   high: 'High',
 };
 
-export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardProps) {
+export function TaskCard({ task, members, onStatusChange, onEdit, onDelete }: TaskCardProps) {
+  const assignee = members?.find((member) => member.userId === task.assigneeId);
+
   return (
     <article className={styles.card}>
       <div className={styles.top}>
@@ -38,6 +42,7 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
         {task.dueDate && (
           <span className={styles.dueDate}>{new Date(task.dueDate).toLocaleDateString()}</span>
         )}
+        <span className={styles.assignee}>{assignee ? assignee.email : 'Не назначен'}</span>
       </div>
       <div className={styles.actions}>
         <label className={styles.statusLabel} htmlFor={`status-${task.id}`}>

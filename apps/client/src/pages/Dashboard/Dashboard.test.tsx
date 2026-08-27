@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Dashboard } from './index';
 import { AuthProvider } from '../../auth/AuthContext';
 import * as tasksApi from '../../api/tasksApi';
+import * as projectsApi from '../../api/projectsApi';
 
 vi.mock('../../api/tasksApi', async () => {
   const actual = await vi.importActual<typeof tasksApi>('../../api/tasksApi');
@@ -14,6 +15,14 @@ vi.mock('../../api/tasksApi', async () => {
     createTask: vi.fn(),
     updateTask: vi.fn(),
     deleteTask: vi.fn(),
+  };
+});
+
+vi.mock('../../api/projectsApi', async () => {
+  const actual = await vi.importActual<typeof projectsApi>('../../api/projectsApi');
+  return {
+    ...actual,
+    listMembers: vi.fn(),
   };
 });
 
@@ -58,6 +67,8 @@ describe('Dashboard page', () => {
     vi.mocked(tasksApi.createTask).mockReset();
     vi.mocked(tasksApi.updateTask).mockReset();
     vi.mocked(tasksApi.deleteTask).mockReset();
+    vi.mocked(projectsApi.listMembers).mockReset();
+    vi.mocked(projectsApi.listMembers).mockResolvedValue([]);
   });
 
   test('redirects an unauthenticated user to /login', () => {

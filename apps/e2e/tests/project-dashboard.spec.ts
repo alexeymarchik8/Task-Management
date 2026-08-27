@@ -33,6 +33,21 @@ test.describe('Project dashboard', () => {
     await expect(card.getByRole('combobox')).toHaveValue('done');
   });
 
+  test('assigning a task to a project member shows their email on the card', async ({ page }) => {
+    const email = uniqueEmail('dashboard-assignee');
+    await registerUser(page, email);
+    await createProject(page, 'Assignee Project');
+    await page.getByRole('link', { name: 'Assignee Project' }).click();
+
+    await page.getByRole('button', { name: '+ Новая задача' }).click();
+    await page.getByLabel('Заголовок').fill('Task to assign');
+    await page.getByLabel('Исполнитель').selectOption({ label: email });
+    await page.getByRole('button', { name: 'Сохранить' }).click();
+
+    const card = page.locator('article', { hasText: 'Task to assign' });
+    await expect(card.getByText(email)).toBeVisible();
+  });
+
   test('deleting a task removes its card from the board', async ({ page }) => {
     await registerUser(page, uniqueEmail('dashboard-delete'));
     await createProject(page, 'Delete Project');

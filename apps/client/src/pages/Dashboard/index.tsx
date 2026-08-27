@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { listTasks, updateTask, deleteTask, type Task, type TaskStatus } from '../../api/tasksApi';
+import { listMembers, type Member } from '../../api/projectsApi';
 import { KanbanBoard } from '../../components/KanbanBoard';
 import { TaskForm } from '../../components/TaskForm';
 import styles from './Dashboard.module.scss';
@@ -10,6 +11,7 @@ export function Dashboard() {
   const { isAuthenticated } = useAuth();
   const { projectId } = useParams<{ projectId: string }>();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
@@ -22,6 +24,10 @@ export function Dashboard() {
     listTasks(projectId)
       .then(setTasks)
       .catch(() => setError('Не удалось загрузить задачи проекта.'));
+
+    listMembers(projectId)
+      .then(setMembers)
+      .catch(() => setMembers([]));
   }, [isAuthenticated, projectId]);
 
   if (!isAuthenticated) {
@@ -76,6 +82,7 @@ export function Dashboard() {
 
       <KanbanBoard
         tasks={tasks}
+        members={members}
         onStatusChange={handleStatusChange}
         onEdit={openEditForm}
         onDelete={handleDelete}
