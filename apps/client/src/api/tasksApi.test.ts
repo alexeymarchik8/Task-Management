@@ -35,6 +35,40 @@ describe('listTasks', () => {
     expect(result).toEqual([task]);
   });
 
+  test('appends filter query params when provided', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve([task]),
+    } as Response);
+
+    await listTasks('project-1', {
+      status: 'todo',
+      priority: 'high',
+      assigneeId: 'user-1',
+      search: 'report',
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3000/projects/project-1/tasks?status=todo&priority=high&assigneeId=user-1&search=report',
+      { headers: { 'Content-Type': 'application/json', Authorization: 'Bearer jwt-token' } },
+    );
+  });
+
+  test('omits the query string when no filters are provided', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve([task]),
+    } as Response);
+
+    await listTasks('project-1', {});
+
+    expect(fetch).toHaveBeenCalledWith('http://localhost:3000/projects/project-1/tasks', {
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer jwt-token' },
+    });
+  });
+
   test('throws an ApiError when the request fails', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: false,

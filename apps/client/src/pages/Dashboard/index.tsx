@@ -1,34 +1,62 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { listTasks, updateTask, deleteTask, type Task, type TaskStatus } from '../../api/tasksApi';
+import {
+  listTasks,
+  updateTask,
+  deleteTask,
+  type Task,
+  type TaskStatus,
+  type TaskPriority,
+} from '../../api/tasksApi';
 import { listMembers, type Member } from '../../api/projectsApi';
 import { KanbanBoard } from '../../components/KanbanBoard';
 import { TaskForm } from '../../components/TaskForm';
+import { TaskFilterBar, type TaskFiltersState } from '../../components/TaskFilterBar';
 import styles from './Dashboard.module.scss';
 
 export function Dashboard() {
   const { isAuthenticated } = useAuth();
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
+  const filters: TaskFiltersState = {
+    status: searchParams.get('status') ?? '',
+    priority: searchParams.get('priority') ?? '',
+    assigneeId: searchParams.get('assigneeId') ?? '',
+    search: searchParams.get('search') ?? '',
+  };
+
   useEffect(() => {
     if (!isAuthenticated || !projectId) {
       return;
     }
 
-    listTasks(projectId)
+    listTasks(projectId, {
+      status: (filters.status || undefined) as TaskStatus | undefined,
+      priority: (filters.priority || undefined) as TaskPriority | undefined,
+      assigneeId: filters.assigneeId || undefined,
+      search: filters.search || undefined,
+    })
       .then(setTasks)
       .catch(() => setError('Не удалось загрузить задачи проекта.'));
 
     listMembers(projectId)
       .then(setMembers)
       .catch(() => setMembers([]));
-  }, [isAuthenticated, projectId]);
+  }, [
+    isAuthenticated,
+    projectId,
+    filters.status,
+    filters.priority,
+    filters.assigneeId,
+    filters.search,
+  ]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -70,6 +98,15 @@ export function Dashboard() {
       .catch(() => setError('Не удалось удалить задачу.'));
   };
 
+  const handleFiltersChange = (next: TaskFiltersState) => {
+    const params: Record<string, string> = {};
+    if (next.status) params.status = next.status;
+    if (next.priority) params.priority = next.priority;
+    if (next.assigneeId) params.assigneeId = next.assigneeId;
+    if (next.search) params.search = next.search;
+    setSearchParams(params);
+  };
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -77,6 +114,8 @@ export function Dashboard() {
           + Новая задача
         </button>
       </header>
+
+      <TaskFilterBar filters={filters} members={members} onChange={handleFiltersChange} />
 
       {error && <p className={styles.error}>{error}</p>}
 

@@ -86,7 +86,12 @@ describe('Dashboard page', () => {
     await waitFor(() => {
       expect(screen.getByText('Write the report')).toBeInTheDocument();
     });
-    expect(tasksApi.listTasks).toHaveBeenCalledWith('project-1');
+    expect(tasksApi.listTasks).toHaveBeenCalledWith('project-1', {
+      status: undefined,
+      priority: undefined,
+      assigneeId: undefined,
+      search: undefined,
+    });
     expect(screen.getByRole('region', { name: 'Backlog' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Done' })).toBeInTheDocument();
   });
@@ -151,5 +156,63 @@ describe('Dashboard page', () => {
       expect(screen.queryByText('Remove me')).not.toBeInTheDocument();
     });
     expect(tasksApi.deleteTask).toHaveBeenCalledWith(task.id);
+  });
+
+  test('selecting a status filter refetches tasks with the status query param', async () => {
+    loginAsTestUser();
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderDashboardPage(['/dashboard/project-1']);
+    await waitFor(() => expect(tasksApi.listTasks).toHaveBeenCalledTimes(1));
+
+    await user.selectOptions(screen.getByLabelText('Фильтр по статусу'), 'todo');
+
+    await waitFor(() =>
+      expect(tasksApi.listTasks).toHaveBeenLastCalledWith('project-1', {
+        status: 'todo',
+        priority: undefined,
+        assigneeId: undefined,
+        search: undefined,
+      }),
+    );
+  });
+
+  test('typing a search query refetches tasks with the search query param', async () => {
+    loginAsTestUser();
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderDashboardPage(['/dashboard/project-1']);
+    await waitFor(() => expect(tasksApi.listTasks).toHaveBeenCalledTimes(1));
+
+    await user.type(screen.getByLabelText('Поиск задач'), 'report');
+
+    await waitFor(() =>
+      expect(tasksApi.listTasks).toHaveBeenLastCalledWith('project-1', {
+        status: undefined,
+        priority: undefined,
+        assigneeId: undefined,
+        search: 'report',
+      }),
+    );
+  });
+
+  test('reads the initial filters from the URL query string', async () => {
+    loginAsTestUser();
+    vi.mocked(tasksApi.listTasks).mockResolvedValue([]);
+
+    renderDashboardPage(['/dashboard/project-1?status=done&search=report']);
+
+    await waitFor(() =>
+      expect(tasksApi.listTasks).toHaveBeenCalledWith('project-1', {
+        status: 'done',
+        priority: undefined,
+        assigneeId: undefined,
+        search: 'report',
+      }),
+    );
+    expect(screen.getByLabelText('Фильтр по статусу')).toHaveValue('done');
+    expect(screen.getByLabelText('Поиск задач')).toHaveValue('report');
   });
 });

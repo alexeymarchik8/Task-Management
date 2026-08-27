@@ -33,6 +33,41 @@ test.describe('Project dashboard', () => {
     await expect(card.getByRole('combobox')).toHaveValue('done');
   });
 
+  test('filtering by status and searching by title narrows the board', async ({ page }) => {
+    await registerUser(page, uniqueEmail('dashboard-filter'));
+    await createProject(page, 'Filter Project');
+    await page.getByRole('link', { name: 'Filter Project' }).click();
+
+    await page.getByRole('button', { name: '+ Новая задача' }).click();
+    await page.getByLabel('Заголовок').fill('Write the report');
+    await page.getByRole('button', { name: 'Сохранить' }).click();
+    await expect(page.getByText('Write the report')).toBeVisible();
+
+    await page.getByRole('button', { name: '+ Новая задача' }).click();
+    await page.getByLabel('Заголовок').fill('Plan the sprint');
+    await page.getByRole('button', { name: 'Сохранить' }).click();
+    await expect(page.getByText('Plan the sprint')).toBeVisible();
+
+    const reportCard = page.locator('article', { hasText: 'Write the report' });
+    await reportCard.getByRole('combobox').selectOption('done');
+
+    await page.getByLabel('Фильтр по статусу').selectOption('done');
+    await expect(page.getByText('Write the report')).toBeVisible();
+    await expect(page.getByText('Plan the sprint')).not.toBeVisible();
+
+    await page.getByLabel('Фильтр по статусу').selectOption('');
+    await expect(page.getByText('Plan the sprint')).toBeVisible();
+
+    await page.getByLabel('Поиск задач').fill('sprint');
+    await expect(page.getByText('Plan the sprint')).toBeVisible();
+    await expect(page.getByText('Write the report')).not.toBeVisible();
+    await expect(page).toHaveURL(/search=sprint/);
+
+    await page.reload();
+    await expect(page.getByText('Plan the sprint')).toBeVisible();
+    await expect(page.getByText('Write the report')).not.toBeVisible();
+  });
+
   test('dragging a task card to another column moves it there', async ({ page }) => {
     await registerUser(page, uniqueEmail('dashboard-dnd'));
     await createProject(page, 'DnD Project');
@@ -86,7 +121,7 @@ test.describe('Project dashboard', () => {
 
     await page.getByLabel('Заголовок').fill('Updated title');
     await page.getByLabel('Описание').fill('Updated description');
-    await page.getByLabel('Приоритет').selectOption('high');
+    await page.getByLabel('Приоритет', { exact: true }).selectOption('high');
     await page.getByLabel('Срок').fill('2026-12-31');
     await page.getByRole('button', { name: 'Сохранить' }).click();
 
