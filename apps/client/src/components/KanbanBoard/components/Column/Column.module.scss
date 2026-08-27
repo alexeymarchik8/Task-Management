@@ -7,6 +7,12 @@
   background: var(--color-muted);
   border-radius: var(--radius-lg);
   padding: 14px;
+  border: 2px solid transparent;
+  transition: border-color var(--transition-fast);
+}
+
+.column.over {
+  border-color: var(--color-primary);
 }
 
 @media (max-width: 480px) {

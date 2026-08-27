@@ -33,6 +33,44 @@ test.describe('Project dashboard', () => {
     await expect(card.getByRole('combobox')).toHaveValue('done');
   });
 
+  test('dragging a task card to another column moves it there', async ({ page }) => {
+    await registerUser(page, uniqueEmail('dashboard-dnd'));
+    await createProject(page, 'DnD Project');
+    await page.getByRole('link', { name: 'DnD Project' }).click();
+
+    await page.getByRole('button', { name: '+ Новая задача' }).click();
+    await page.getByLabel('Заголовок').fill('Drag me');
+    await page.getByRole('button', { name: 'Сохранить' }).click();
+
+    const card = page.locator('article', { hasText: 'Drag me' });
+    await expect(card).toBeVisible();
+    const handle = card.getByRole('button', { name: 'Перетащить задачу' });
+    const targetColumn = page.getByRole('region', { name: 'In Progress' });
+
+    const handleBox = await handle.boundingBox();
+    const targetBox = await targetColumn.boundingBox();
+    if (!handleBox || !targetBox) {
+      throw new Error('Could not measure drag handle or target column');
+    }
+
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(targetBox.x + targetBox.width / 2, handleBox.y, { steps: 10 });
+    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 40, { steps: 10 });
+    await page.mouse.up();
+
+    const inProgressColumn = page.getByRole('region', { name: 'In Progress' });
+    await expect(inProgressColumn.getByText('Drag me')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Backlog' })).not.toHaveText(/Drag me/);
+
+    await page.reload();
+
+    await expect(
+      page.getByRole('region', { name: 'In Progress' }).getByText('Drag me'),
+    ).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Backlog' })).not.toHaveText(/Drag me/);
+  });
+
   test('editing a task updates its title, description, priority and due date', async ({ page }) => {
     await registerUser(page, uniqueEmail('dashboard-edit'));
     await createProject(page, 'Edit Project');
