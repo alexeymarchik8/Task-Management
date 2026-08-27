@@ -19,6 +19,7 @@ import { MyJoinRequests } from './components/MyJoinRequests';
 import { PendingRequests } from './components/PendingRequests';
 import { People } from './components/People';
 import { InfoButton } from './components/InfoButton';
+import { ThemeToggle } from '../ThemeToggle';
 import styles from './Sidebar.module.scss';
 
 export function Sidebar() {
@@ -82,6 +83,10 @@ export function Sidebar() {
 
   return (
     <aside className={styles.sidebar} aria-label="Навигация">
+      <div className={styles.topBar}>
+        <ThemeToggle />
+      </div>
+
       <section className={styles.section}>
         <h2 className={styles.heading}>Проекты</h2>
         <ProjectSearch value={searchQuery} onChange={setSearchQuery} />

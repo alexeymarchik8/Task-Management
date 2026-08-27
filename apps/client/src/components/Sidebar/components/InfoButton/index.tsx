@@ -18,7 +18,12 @@ export function InfoButton({ project, currentUserId }: InfoButtonProps) {
 
   return (
     <div className={styles.container}>
-      <button className={styles.button} type="button" onClick={() => setIsOpen((prev) => !prev)}>
+      <button
+        className={styles.button}
+        type="button"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
         Информация
       </button>
       {isOpen && (

@@ -23,11 +23,15 @@ describe('InfoButton', () => {
     const user = userEvent.setup();
     render(<InfoButton project={project} currentUserId="1" />);
 
-    await user.click(screen.getByRole('button', { name: 'Информация' }));
+    const button = screen.getByRole('button', { name: 'Информация' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(button);
 
     expect(screen.getByText('My Project')).toBeInTheDocument();
     expect(screen.getByText('AAAAAAAA')).toBeInTheDocument();
     expect(screen.getByText('Владелец')).toBeInTheDocument();
+    expect(button).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('shows member role for a non-owner', async () => {

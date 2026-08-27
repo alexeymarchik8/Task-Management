@@ -11,6 +11,11 @@
   overflow-y: auto;
 }
 
+.topBar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .section {
   display: flex;
   flex-direction: column;
