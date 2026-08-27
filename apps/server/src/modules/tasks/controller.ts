@@ -31,6 +31,14 @@ export async function createTask(req: AuthenticatedRequest, res: Response): Prom
     return;
   }
 
+  if (assigneeId !== undefined) {
+    const assigneeMembership = await tasksRepository.findMembership(assigneeId, projectId);
+    if (!assigneeMembership) {
+      res.status(400).json({ error: 'Исполнитель должен быть участником проекта' });
+      return;
+    }
+  }
+
   const task = await tasksRepository.createTask(projectId, {
     title,
     description,
@@ -89,6 +97,14 @@ export async function updateTask(req: AuthenticatedRequest, res: Response): Prom
   if (dueDate !== undefined && Number.isNaN(Date.parse(dueDate))) {
     res.status(400).json({ error: 'Недопустимый срок выполнения' });
     return;
+  }
+
+  if (assigneeId !== undefined) {
+    const assigneeMembership = await tasksRepository.findMembership(assigneeId, task.projectId);
+    if (!assigneeMembership) {
+      res.status(400).json({ error: 'Исполнитель должен быть участником проекта' });
+      return;
+    }
   }
 
   const updated = await tasksRepository.updateTask(id, {
